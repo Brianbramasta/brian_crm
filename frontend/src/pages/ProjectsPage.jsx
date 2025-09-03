@@ -3,6 +3,7 @@ import { Briefcase, Plus, Edit2, Trash2, Check, X, Clock, DollarSign, User, Cale
 import Layout from '../components/Layout'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorMessage from '../components/ErrorMessage'
+import { projectService } from '../services/projectService'
 
 const ProjectsPage = () => {
   const [projects, setProjects] = useState([])
@@ -16,78 +17,19 @@ const ProjectsPage = () => {
 
   const loadProjects = async () => {
     setLoading(true)
-    // TODO: Replace with actual API call
-    setTimeout(() => {
-      setProjects([
-        {
-          id: '1',
-          lead_name: 'PT Global Tech Solutions',
-          sales_person: 'Ahmad Susanto',
-          total_value: 15000000,
-          status: 'waiting_approval',
-          created_at: '2024-08-15T10:30:00Z',
-          approval_needed: true,
-          items: [
-            {
-              id: '1',
-              product_name: 'Internet 100Mbps',
-              original_price: 1500000,
-              negotiated_price: 1200000,
-              quantity: 1,
-              needs_approval: true
-            },
-            {
-              id: '2',
-              product_name: 'Dedicated Server',
-              original_price: 5000000,
-              negotiated_price: 4500000,
-              quantity: 1,
-              needs_approval: true
-            }
-          ]
-        },
-        {
-          id: '2',
-          lead_name: 'CV Maju Sejahtera',
-          sales_person: 'Siti Nurhaliza',
-          total_value: 2400000,
-          status: 'approved',
-          created_at: '2024-08-20T14:15:00Z',
-          approval_needed: false,
-          items: [
-            {
-              id: '3',
-              product_name: 'Internet 50Mbps',
-              original_price: 800000,
-              negotiated_price: 800000,
-              quantity: 3,
-              needs_approval: false
-            }
-          ]
-        },
-        {
-          id: '3',
-          lead_name: 'PT Inovasi Digital',
-          sales_person: 'Budi Hartono',
-          total_value: 8000000,
-          status: 'rejected',
-          created_at: '2024-08-10T09:45:00Z',
-          approval_needed: false,
-          rejection_reason: 'Budget constraints from customer side',
-          items: [
-            {
-              id: '4',
-              product_name: 'Enterprise Package',
-              original_price: 8000000,
-              negotiated_price: 6000000,
-              quantity: 1,
-              needs_approval: true
-            }
-          ]
-        }
-      ])
+    try {
+      const result = await projectService.getAllProjects()
+      if (result.success) {
+        setProjects(result.data)
+        setError('')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to load projects. Please try again.')
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
 
   const formatPrice = (price) => {

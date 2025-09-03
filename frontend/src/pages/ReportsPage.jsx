@@ -3,6 +3,7 @@ import { BarChart3, Download, Calendar, TrendingUp, Users, DollarSign, Wifi, Fil
 import Layout from '../components/Layout'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorMessage from '../components/ErrorMessage'
+import { reportService } from '../services/reportService'
 
 const ReportsPage = () => {
   const [reports, setReports] = useState([])
@@ -22,55 +23,33 @@ const ReportsPage = () => {
 
   const loadReports = async () => {
     setLoading(true)
-    // TODO: Replace with actual API call
-    setTimeout(() => {
-      const mockReports = [
-        {
-          id: '1',
-          title: 'Sales Performance Report',
-          description: 'Monthly sales performance by sales person',
-          type: 'sales',
-          generated_at: new Date().toISOString(),
-          file_size: '2.5 MB'
-        },
-        {
-          id: '2',
-          title: 'Customer Revenue Report',
-          description: 'Revenue breakdown by customer and service',
-          type: 'revenue',
-          generated_at: new Date(Date.now() - 86400000).toISOString(),
-          file_size: '1.8 MB'
-        },
-        {
-          id: '3',
-          title: 'Lead Conversion Report',
-          description: 'Lead to customer conversion analytics',
-          type: 'conversion',
-          generated_at: new Date(Date.now() - 172800000).toISOString(),
-          file_size: '1.2 MB'
-        }
-      ]
-      setReports(mockReports)
+    try {
+      const result = await reportService.getAllReports()
+      if (result.success) {
+        setReports(result.data)
+        setError('')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to load reports. Please try again.')
+    } finally {
       setLoading(false)
-    }, 800)
+    }
   }
 
   const loadStatistics = async () => {
-    // TODO: Replace with actual API call
-    setTimeout(() => {
-      setStatistics({
-        totalRevenue: 125000000,
-        totalCustomers: 45,
-        activeServices: 78,
-        newLeads: 23,
-        conversionRate: 68.5,
-        avgDealValue: 2500000,
-        topSalesPerson: 'Ahmad Susanto',
-        topProduct: 'Internet 100Mbps',
-        monthlyGrowth: 12.5,
-        customerRetention: 92.3
-      })
-    }, 500)
+    try {
+      const result = await reportService.getDashboardStats(selectedPeriod)
+      if (result.success) {
+        setStatistics(result.data)
+        setError('')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to load statistics. Please try again.')
+    }
   }
 
   const formatPrice = (price) => {
@@ -91,14 +70,51 @@ const ReportsPage = () => {
     })
   }
 
-  const handleExportReport = (type) => {
-    // TODO: Implement actual export functionality
-    alert(`Exporting ${type} report to Excel...`)
+  const handleExportReport = async (reportType, reportId) => {
+    try {
+      const result = await reportService.downloadReport(reportType, reportId)
+      if (result.success) {
+        // Download handled by the service
+        setError('')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to export report. Please try again.')
+    }
   }
 
-  const generateNewReport = (type) => {
-    // TODO: Implement report generation
-    alert(`Generating new ${type} report...`)
+  const generateNewReport = async (type) => {
+    setLoading(true)
+    try {
+      let result
+      switch (type) {
+        case 'sales':
+          result = await reportService.generateSalesReport(dateRange)
+          break
+        case 'revenue':
+          result = await reportService.generateRevenueReport(dateRange)
+          break
+        case 'customer':
+          result = await reportService.generateCustomerReport(dateRange)
+          break
+        default:
+          setError('Unknown report type')
+          return
+      }
+
+      if (result.success) {
+        setError('')
+        // Reload reports to show the new one
+        loadReports()
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to generate report. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

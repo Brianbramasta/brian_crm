@@ -3,6 +3,7 @@ import { Wifi, Plus, Edit2, Trash2, Package, Signal, Globe } from 'lucide-react'
 import Layout from '../components/Layout'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorMessage from '../components/ErrorMessage'
+import { productService } from '../services/productService'
 
 const ProductsPage = () => {
   const [products, setProducts] = useState([])
@@ -15,56 +16,19 @@ const ProductsPage = () => {
 
   const loadProducts = async () => {
     setLoading(true)
-    // TODO: Replace with actual API call
-    setTimeout(() => {
-      setProducts([
-        {
-          id: '1',
-          name: 'Internet Package 50Mbps',
-          hpp: 500000, // Harga Pokok Penjualan
-          margin_percent: 40,
-          price: 700000, // Calculated: HPP + (HPP * margin/100)
-          description: 'High-speed internet for small business',
-          type: 'internet',
-          bandwidth: '50Mbps',
-          created_at: '2024-01-15T10:30:00Z'
-        },
-        {
-          id: '2',
-          name: 'Internet Package 100Mbps',
-          hpp: 800000,
-          margin_percent: 35,
-          price: 1080000,
-          description: 'Premium internet for medium business',
-          type: 'internet',
-          bandwidth: '100Mbps',
-          created_at: '2024-01-20T14:20:00Z'
-        },
-        {
-          id: '3',
-          name: 'Dedicated Line 1Gbps',
-          hpp: 5000000,
-          margin_percent: 30,
-          price: 6500000,
-          description: 'Enterprise dedicated internet connection',
-          type: 'dedicated',
-          bandwidth: '1Gbps',
-          created_at: '2024-02-01T09:15:00Z'
-        },
-        {
-          id: '4',
-          name: 'Cloud Server Basic',
-          hpp: 1200000,
-          margin_percent: 50,
-          price: 1800000,
-          description: 'Basic cloud server hosting package',
-          type: 'cloud',
-          bandwidth: 'N/A',
-          created_at: '2024-02-10T16:45:00Z'
-        }
-      ])
+    try {
+      const result = await productService.getAllProducts()
+      if (result.success) {
+        setProducts(result.data)
+        setError('')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to load products. Please try again.')
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
 
   const formatPrice = (price) => {

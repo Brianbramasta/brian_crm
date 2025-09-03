@@ -3,6 +3,7 @@ import { Users, Plus, Edit2, Trash2, Phone, MapPin, DollarSign, Calendar, Activi
 import Layout from '../components/Layout'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorMessage from '../components/ErrorMessage'
+import { leadService } from '../services/leadService'
 
 const LeadsPage = () => {
   const [leads, setLeads] = useState([])
@@ -15,61 +16,19 @@ const LeadsPage = () => {
 
   const loadLeads = async () => {
     setLoading(true)
-    // TODO: Replace with actual API call
-    setTimeout(() => {
-      setLeads([
-        {
-          id: '1',
-          name: 'PT Global Tech Solutions',
-          contact: '081234567890',
-          address: 'Jl. Sudirman No. 123, Jakarta Selatan',
-          kebutuhan: 'Internet dedicated 100Mbps untuk kantor pusat dengan 200 karyawan',
-          status: 'new',
-          owner: { name: 'Ahmad Susanto', id: 1 },
-          created_at: '2024-08-25T10:30:00Z',
-          last_contact: null,
-          estimated_value: 15000000
-        },
-        {
-          id: '2',
-          name: 'CV Berkah Digital',
-          contact: '082345678901',
-          address: 'Jl. Gatot Subroto No. 456, Bandung',
-          kebutuhan: 'Paket internet 50Mbps + cloud hosting untuk toko online',
-          status: 'contacted',
-          owner: { name: 'Siti Nurhaliza', id: 2 },
-          created_at: '2024-08-20T14:15:00Z',
-          last_contact: '2024-08-28T09:30:00Z',
-          estimated_value: 8000000
-        },
-        {
-          id: '3',
-          name: 'Sekolah Harapan Bangsa',
-          contact: '083456789012',
-          address: 'Jl. Pendidikan No. 789, Surabaya',
-          kebutuhan: 'WiFi untuk sekolah 500 siswa dengan bandwidth stabil',
-          status: 'qualified',
-          owner: { name: 'Budi Hartono', id: 3 },
-          created_at: '2024-08-15T11:45:00Z',
-          last_contact: '2024-08-30T16:20:00Z',
-          estimated_value: 12000000
-        },
-        {
-          id: '4',
-          name: 'PT Manufacturing Indo',
-          contact: '084567890123',
-          address: 'Kawasan Industri Cikarang Blok A-15',
-          kebutuhan: 'Internet untuk sistem monitoring produksi real-time',
-          status: 'lost',
-          owner: { name: 'Rina Sari', id: 4 },
-          created_at: '2024-08-10T08:20:00Z',
-          last_contact: '2024-08-22T14:30:00Z',
-          estimated_value: 20000000,
-          lost_reason: 'Memilih kompetitor dengan harga lebih murah'
-        }
-      ])
+    try {
+      const result = await leadService.getAllLeads()
+      if (result.success) {
+        setLeads(result.data)
+        setError('')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to load leads. Please try again.')
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
 
   const getStatusColor = (status) => {

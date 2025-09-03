@@ -1,98 +1,151 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Users, Briefcase, Wifi, DollarSign, Building, Phone, TrendingUp, Activity } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import Layout from '../components/Layout'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorMessage from '../components/ErrorMessage'
+import { reportService } from '../services/reportService'
 
 const Dashboard = () => {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const [stats, setStats] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    loadDashboardStats()
+  }, [])
+
+  const loadDashboardStats = async () => {
+    setLoading(true)
+    try {
+      const result = await reportService.getDashboardStats('month')
+      if (result.success) {
+        setStats(result.data)
+        setError('')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to load dashboard statistics. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleLogout = async () => {
     await logout()
     navigate('/')
   }
+
+  const formatPrice = (price) => {
+    if (!price) return 'Rp 0'
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      notation: 'compact',
+      compactDisplay: 'short'
+    }).format(price)
+  }
   return (
     <Layout>
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          {/* Page header */}
+        {/* Page header */}
+        <div className="px-4 py-6 sm:px-0">
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="mt-2 text-gray-600">Welcome to PT. Smart ISP CRM Dashboard</p>
+        </div>
+
+        {error && (
           <div className="px-4 py-6 sm:px-0">
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="mt-2 text-gray-600">Welcome to PT. Smart ISP CRM Dashboard</p>
+            <ErrorMessage
+              message={error}
+              onClose={() => setError('')}
+            />
           </div>
+        )}
 
-          {/* Stats */}
-          <div className="px-4 py-6 sm:px-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Active Customers */}
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <Building className="h-6 w-6 text-green-400" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">Active Customers</dt>
-                        <dd className="text-lg font-medium text-gray-900">45</dd>
-                      </dl>
+        {loading ? (
+          <div className="px-4 py-12 sm:px-0 text-center">
+            <LoadingSpinner size="lg" text="Loading dashboard..." />
+          </div>
+        ) : stats ? (
+          <>
+            {/* Stats */}
+            <div className="px-4 py-6 sm:px-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Active Customers */}
+                <div className="bg-white overflow-hidden shadow rounded-lg">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <Building className="h-6 w-6 text-green-400" />
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">Active Customers</dt>
+                          <dd className="text-lg font-medium text-gray-900">{stats.totalCustomers || 0}</dd>
+                        </dl>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Monthly Revenue */}
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <DollarSign className="h-6 w-6 text-blue-400" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">Monthly Revenue</dt>
-                        <dd className="text-lg font-medium text-gray-900">Rp 125M</dd>
-                      </dl>
+                {/* Monthly Revenue */}
+                <div className="bg-white overflow-hidden shadow rounded-lg">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <DollarSign className="h-6 w-6 text-blue-400" />
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">Monthly Revenue</dt>
+                          <dd className="text-lg font-medium text-gray-900">{formatPrice(stats.totalRevenue || 0)}</dd>
+                        </dl>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Active Services */}
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <Wifi className="h-6 w-6 text-purple-400" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">Active Services</dt>
-                        <dd className="text-lg font-medium text-gray-900">78</dd>
-                      </dl>
+                {/* Active Services */}
+                <div className="bg-white overflow-hidden shadow rounded-lg">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <Wifi className="h-6 w-6 text-purple-400" />
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">Active Services</dt>
+                          <dd className="text-lg font-medium text-gray-900">{stats.activeServices || 0}</dd>
+                        </dl>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* New Leads */}
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <TrendingUp className="h-6 w-6 text-orange-400" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">New Leads This Month</dt>
-                        <dd className="text-lg font-medium text-gray-900">23</dd>
-                      </dl>
+                {/* New Leads */}
+                <div className="bg-white overflow-hidden shadow rounded-lg">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <TrendingUp className="h-6 w-6 text-orange-400" />
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">New Leads This Month</dt>
+                          <dd className="text-lg font-medium text-gray-900">{stats.newLeads || 0}</dd>
+                        </dl>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
           {/* Content Grid */}
           <div className="px-4 py-6 sm:px-0">
@@ -180,7 +233,13 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-        </div>
+        </>
+        ) : (
+          <div className="px-4 py-12 sm:px-0 text-center text-gray-500">
+            <p>No dashboard data available</p>
+          </div>
+        )}
+      </div>
       </Layout>
     )
   }

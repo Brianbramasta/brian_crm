@@ -3,6 +3,7 @@ import { Users, Plus, Edit2, Trash2, Wifi, Calendar, Building, Phone, MapPin } f
 import Layout from '../components/Layout'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorMessage from '../components/ErrorMessage'
+import { customerService } from '../services/customerService'
 
 const CustomersPage = () => {
   const [customers, setCustomers] = useState([])
@@ -15,53 +16,19 @@ const CustomersPage = () => {
 
   const loadCustomers = async () => {
     setLoading(true)
-    // TODO: Replace with actual API call
-    setTimeout(() => {
-      setCustomers([
-        {
-          id: '1',
-          name: 'PT Teknologi Indonesia',
-          contact: '081234567890',
-          address: 'Jl. Sudirman No. 123, Jakarta Selatan',
-          services: [
-            {
-              id: '1',
-              product: 'Internet 100Mbps',
-              price: 1500000,
-              status: 'active',
-              start_date: '2024-01-15'
-            },
-            {
-              id: '2',
-              product: 'Dedicated Line 50Mbps',
-              price: 3000000,
-              status: 'active',
-              start_date: '2024-02-01'
-            }
-          ],
-          total_monthly: 4500000,
-          created_at: '2024-01-15T10:30:00Z'
-        },
-        {
-          id: '2',
-          name: 'CV Maju Berkembang',
-          contact: '082345678901',
-          address: 'Jl. Gatot Subroto No. 456, Bandung',
-          services: [
-            {
-              id: '3',
-              product: 'Internet 50Mbps',
-              price: 800000,
-              status: 'active',
-              start_date: '2024-03-01'
-            }
-          ],
-          total_monthly: 800000,
-          created_at: '2024-03-01T14:20:00Z'
-        }
-      ])
+    try {
+      const result = await customerService.getAllCustomers()
+      if (result.success) {
+        setCustomers(result.data)
+        setError('')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to load customers. Please try again.')
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
 
   const formatPrice = (price) => {
