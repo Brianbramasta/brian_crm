@@ -11,15 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('users', function (Blueprint $table) {
+        Schema::create('deals', function (Blueprint $table) {
             $table->id();
-            $table->string('name', 100);
-            $table->string('email', 100)->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->enum('role', ['sales', 'manager'])->default('sales');
-            $table->rememberToken();
+            $table->foreignId('lead_id')->constrained('leads')->onDelete('cascade');
+            $table->enum('status', ['waiting_approval', 'approved', 'rejected'])->default('waiting_approval');
+            $table->decimal('total_amount', 12, 2);
             $table->timestamps();
+
+            $table->index(['lead_id', 'status']);
         });
     }
 
@@ -28,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
+        Schema::dropIfExists('deals');
     }
 };

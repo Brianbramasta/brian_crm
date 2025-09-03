@@ -1,0 +1,108 @@
+# Docker Compose Override for Local Development Customizations
+# This file is automatically loaded when running docker-compose
+# Copy this to docker-compose.override.yml and customize as needed
+
+version: '3.8'
+
+services:
+  # Override backend service for local development
+  backend:
+    # Uncomment to use a different port
+    # ports:
+    #   - "8001:8000"
+
+    # Uncomment to add additional environment variables
+    # environment:
+    #   - XDEBUG_MODE=debug
+    #   - XDEBUG_CONFIG=client_host=host.docker.internal
+
+    # Uncomment to add volume for hot reloading (development only)
+    # volumes:
+    #   - .:/var/www/html
+    #   - /var/www/html/vendor
+    #   - /var/www/html/node_modules
+
+  # Override frontend service for local development
+  frontend:
+    # Uncomment to use a different port
+    # ports:
+    #   - "3001:3000"
+
+    # Uncomment to add additional environment variables
+    # environment:
+    #   - REACT_APP_DEBUG=true
+    #   - FAST_REFRESH=false
+
+  # Override database service for local development
+  db:
+    # Uncomment to use a different port
+    # ports:
+    #   - "3307:3306"
+
+    # Uncomment to add custom MySQL configuration
+    # command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+    # Uncomment to persist data in a different location
+    # volumes:
+    #   - ./docker/mysql/data:/var/lib/mysql
+
+  # Override Redis service for local development
+  redis:
+    # Uncomment to use a different port
+    # ports:
+    #   - "6380:6379"
+
+# Add additional services for local development
+# Uncomment and configure as needed
+
+  # PhpMyAdmin for database management
+  # phpmyadmin:
+  #   image: phpmyadmin/phpmyadmin
+  #   container_name: ptsmart-crm-phpmyadmin
+  #   restart: unless-stopped
+  #   environment:
+  #     PMA_HOST: db
+  #     PMA_PORT: 3306
+  #     PMA_USER: root
+  #     PMA_PASSWORD: secret
+  #   ports:
+  #     - "8080:80"
+  #   depends_on:
+  #     - db
+  #   networks:
+  #     - ptsmart-dev-network
+
+  # Redis Commander for Redis management
+  # redis-commander:
+  #   image: rediscommander/redis-commander:latest
+  #   container_name: ptsmart-crm-redis-commander
+  #   restart: unless-stopped
+  #   environment:
+  #     REDIS_HOSTS: local:redis:6379
+  #   ports:
+  #     - "8081:8081"
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - ptsmart-dev-network
+
+  # Elasticsearch for advanced search (optional)
+  # elasticsearch:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.5.0
+  #   container_name: ptsmart-crm-elasticsearch
+  #   restart: unless-stopped
+  #   environment:
+  #     - discovery.type=single-node
+  #     - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  #     - xpack.security.enabled=false
+  #   ports:
+  #     - "9200:9200"
+  #   volumes:
+  #     - elasticsearch_data:/usr/share/elasticsearch/data
+  #   networks:
+  #     - ptsmart-dev-network
+
+# Uncomment if using additional services
+# volumes:
+#   elasticsearch_data:
+#     driver: local

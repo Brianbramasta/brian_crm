@@ -21,6 +21,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -42,4 +43,28 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    /**
+     * Check if user is a manager
+     */
+    public function isManager(): bool
+    {
+        return $this->role === 'manager';
+    }
+
+    /**
+     * Check if user is a sales
+     */
+    public function isSales(): bool
+    {
+        return $this->role === 'sales';
+    }
+
+    /**
+     * Get the leads owned by this user
+     */
+    public function leads()
+    {
+        return $this->hasMany(Lead::class, 'owner_user_id');
+    }
 }
