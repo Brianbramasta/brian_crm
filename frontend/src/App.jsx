@@ -5,9 +5,11 @@ import ProtectedRoute from './components/ProtectedRoute'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import Dashboard from './pages/Dashboard'
-import TasksPage from './pages/TasksPage'
 import ProductsPage from './pages/ProductsPage'
 import LeadsPage from './pages/LeadsPage'
+import CustomersPage from './pages/CustomersPage'
+import ProjectsPage from './pages/ProjectsPage'
+import ReportsPage from './pages/ReportsPage'
 
 function App() {
   return (
@@ -25,10 +27,10 @@ function App() {
             }
           />
           <Route
-            path="/tasks"
+            path="/leads"
             element={
               <ProtectedRoute>
-                <TasksPage />
+                <LeadsPage />
               </ProtectedRoute>
             }
           />
@@ -41,10 +43,26 @@ function App() {
             }
           />
           <Route
-            path="/leads"
+            path="/customers"
             element={
               <ProtectedRoute>
-                <LeadsPage />
+                <CustomersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects"
+            element={
+              <ProtectedRoute>
+                <ProjectsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <ReportsPage />
               </ProtectedRoute>
             }
           />

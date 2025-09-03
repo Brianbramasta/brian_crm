@@ -20,8 +20,8 @@ Semua response menggunakan format JSON dengan standar HTTP status code.
 
 ```json
 {
-    "email": "string",
-    "password": "string"
+    "email": "manager@ptsmart.com",
+    "password": "password123"
 }
 ```
 ````

@@ -1,9 +1,9 @@
-import api from './api'
+import { apiClient } from './apiClient'
 
 export const authService = {
   async login(email, password) {
     try {
-      const response = await api.post('/auth/login', {
+      const response = await apiClient.post('/auth/login', {
         email,
         password,
       })
@@ -25,7 +25,7 @@ export const authService = {
 
   async logout() {
     try {
-      await api.post('/auth/logout')
+      await apiClient.post('/auth/logout')
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
@@ -37,7 +37,7 @@ export const authService = {
 
   async getCurrentUser() {
     try {
-      const response = await api.get('/user')
+      const response = await apiClient.get('/user')
       return { success: true, data: response.data.user }
     } catch (error) {
       return {
