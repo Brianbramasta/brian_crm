@@ -11,14 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('users', function (Blueprint $table) {
+        Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->string('name', 100);
-            $table->string('email', 100)->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->enum('role', ['sales', 'manager']);
-            $table->rememberToken();
+            $table->decimal('hpp', 12, 2);
+            $table->decimal('margin_percent', 5, 2);
+            $table->decimal('harga_jual', 12, 2);
+            $table->text('description')->nullable();
+            $table->integer('stock')->default(0);
             $table->timestamps();
         });
     }
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
+        Schema::dropIfExists('products');
     }
 };

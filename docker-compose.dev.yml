@@ -1,0 +1,79 @@
+version: "3.8"
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: ptsmart-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ptsmart_crm
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: laravel
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - ptsmart-network
+
+  # Laravel Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ptsmart-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/var/www
+      - ./storage:/var/www/storage
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=ptsmart_crm
+      - DB_USERNAME=laravel
+      - DB_PASSWORD=laravel
+    depends_on:
+      - mysql
+    networks:
+      - ptsmart-network
+
+  # React Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: ptsmart-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - backend
+    networks:
+      - ptsmart-network
+
+  # Mailpit (Email Testing)
+  mailpit:
+    image: axllent/mailpit
+    container_name: ptsmart-mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - ptsmart-network
+
+volumes:
+  mysql_data:
+
+networks:
+  ptsmart-network:
+    driver: bridge
