@@ -1,6 +1,7 @@
 import React from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
@@ -22,7 +23,9 @@ function App() {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <Layout>
+                  <Dashboard />
+                </Layout>
               </ProtectedRoute>
             }
           />
@@ -30,7 +33,19 @@ function App() {
             path="/leads"
             element={
               <ProtectedRoute>
-                <LeadsPage />
+                <Layout>
+                  <LeadsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/deals"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ProjectsPage />
+                </Layout>
               </ProtectedRoute>
             }
           />
@@ -38,7 +53,9 @@ function App() {
             path="/products"
             element={
               <ProtectedRoute>
-                <ProductsPage />
+                <Layout>
+                  <ProductsPage />
+                </Layout>
               </ProtectedRoute>
             }
           />
@@ -46,15 +63,9 @@ function App() {
             path="/customers"
             element={
               <ProtectedRoute>
-                <CustomersPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/projects"
-            element={
-              <ProtectedRoute>
-                <ProjectsPage />
+                <Layout>
+                  <CustomersPage />
+                </Layout>
               </ProtectedRoute>
             }
           />
@@ -62,7 +73,9 @@ function App() {
             path="/reports"
             element={
               <ProtectedRoute>
-                <ReportsPage />
+                <Layout>
+                  <ReportsPage />
+                </Layout>
               </ProtectedRoute>
             }
           />

@@ -8,13 +8,13 @@ export const authService = {
         password,
       })
 
-      const { token, user } = response.data
+      const { token, user, permissions } = response.data
 
-      // Store token and user data
+      // Store token, user data, and permissions
       localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(user))
+      localStorage.setItem('user', JSON.stringify({ ...user, permissions }))
 
-      return { success: true, data: { token, user } }
+      return { success: true, data: { token, user: { ...user, permissions } } }
     } catch (error) {
       return {
         success: false,
@@ -38,11 +38,36 @@ export const authService = {
   async getCurrentUser() {
     try {
       const response = await apiClient.get('/user')
-      return { success: true, data: response.data.user }
+      const { user, permissions, stats } = response.data
+
+      // Update stored user data with latest info
+      const userData = { ...user, permissions, stats }
+      localStorage.setItem('user', JSON.stringify(userData))
+
+      return { success: true, data: userData }
     } catch (error) {
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to get user'
+      }
+    }
+  },
+
+  async updateProfile(profileData) {
+    try {
+      const response = await apiClient.put('/user/profile', profileData)
+      const { user } = response.data
+
+      // Update stored user data
+      const storedUser = this.getStoredUser()
+      const updatedUser = { ...storedUser, ...user }
+      localStorage.setItem('user', JSON.stringify(updatedUser))
+
+      return { success: true, data: updatedUser }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update profile'
       }
     }
   },
@@ -58,6 +83,21 @@ export const authService = {
 
   isAuthenticated() {
     return !!this.getStoredToken()
+  },
+
+  hasPermission(permission) {
+    const user = this.getStoredUser()
+    return user?.permissions?.[permission] || false
+  },
+
+  isSales() {
+    const user = this.getStoredUser()
+    return user?.role === 'sales'
+  },
+
+  isManager() {
+    const user = this.getStoredUser()
+    return user?.role === 'manager'
   }
 }
 

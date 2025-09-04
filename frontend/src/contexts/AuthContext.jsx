@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
       const token = authService.getStoredToken()
       const storedUser = authService.getStoredUser()
 
-      if (token && storedUser) {
+    if (token && storedUser) {
         // Verify token is still valid
         const result = await authService.getCurrentUser()
         if (result.success) {

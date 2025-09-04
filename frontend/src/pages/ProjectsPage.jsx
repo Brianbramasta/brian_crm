@@ -1,32 +1,32 @@
+// import React, { useState, useEffect } from 'react'
 import React, { useState, useEffect } from 'react'
 import { Briefcase, Plus, Edit2, Trash2, Check, X, Clock, DollarSign, User, Calendar } from 'lucide-react'
-import Layout from '../components/Layout'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorMessage from '../components/ErrorMessage'
-import { projectService } from '../services/projectService'
+import { dealService } from '../services/dealService'
 
 const ProjectsPage = () => {
-  const [projects, setProjects] = useState([])
+  const [deals, setDeals] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('all')
 
   useEffect(() => {
-    loadProjects()
+    loadDeals()
   }, [])
 
-  const loadProjects = async () => {
+  const loadDeals = async () => {
     setLoading(true)
     try {
-      const result = await projectService.getAllProjects()
+      const result = await dealService.getDeals()
       if (result.success) {
-        setProjects(result.data)
+        setDeals(result.data.data || result.data)
         setError('')
       } else {
         setError(result.error)
       }
     } catch (err) {
-      setError('Failed to load projects. Please try again.')
+      setError('Failed to load deals. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -74,27 +74,26 @@ const ProjectsPage = () => {
     }
   }
 
-  const filteredProjects = selectedStatus === 'all'
-    ? projects
-    : projects.filter(project => project.status === selectedStatus)
+  const filteredDeals = selectedStatus === 'all'
+    ? deals
+    : deals.filter(deal => deal.status === selectedStatus)
 
   const statusCounts = {
-    all: projects.length,
-    waiting_approval: projects.filter(p => p.status === 'waiting_approval').length,
-    approved: projects.filter(p => p.status === 'approved').length,
-    rejected: projects.filter(p => p.status === 'rejected').length,
+    all: deals.length,
+    waiting_approval: deals.filter(d => d.status === 'waiting_approval').length,
+    approved: deals.filter(d => d.status === 'approved').length,
+    rejected: deals.filter(d => d.status === 'rejected').length,
   }
 
   return (
-    <Layout>
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-            <Briefcase className="h-8 w-8 mr-3 text-indigo-600" />
-            Deal Pipeline
-          </h1>
-          <p className="mt-2 text-gray-600">Manage project negotiations and approvals</p>
-        </div>
+    <div className="max-w-7xl mx-auto py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+          <Briefcase className="h-8 w-8 mr-3 text-indigo-600" />
+          Deal Pipeline
+        </h1>
+        <p className="mt-2 text-gray-600">Manage deal negotiations and approvals</p>
+      </div>
 
         {error && (
           <ErrorMessage
@@ -109,7 +108,7 @@ const ProjectsPage = () => {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
               {[
-                { key: 'all', label: 'All Projects', count: statusCounts.all },
+                { key: 'all', label: 'All Deals', count: statusCounts.all },
                 { key: 'waiting_approval', label: 'Waiting Approval', count: statusCounts.waiting_approval },
                 { key: 'approved', label: 'Approved', count: statusCounts.approved },
                 { key: 'rejected', label: 'Rejected', count: statusCounts.rejected },
@@ -148,43 +147,43 @@ const ProjectsPage = () => {
             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div className="flex justify-between items-center">
                 <h2 className="text-lg font-medium text-gray-900">
-                  Projects ({filteredProjects.length})
+                  Deals ({filteredDeals.length})
                 </h2>
                 <button className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center">
                   <Plus className="h-4 w-4 mr-2" />
-                  New Project
+                  New Deal
                 </button>
               </div>
             </div>
 
-            {filteredProjects.length === 0 ? (
+            {filteredDeals.length === 0 ? (
               <div className="p-12 text-center text-gray-500">
                 <Briefcase className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-                <p className="text-lg">No projects found</p>
+                <p className="text-lg">No deals found</p>
                 <p className="text-sm">
                   {selectedStatus === 'all'
-                    ? 'Start by creating your first project'
-                    : `No projects with status: ${selectedStatus.replace('_', ' ')}`
+                    ? 'Start by creating your first deal'
+                    : `No deals with status: ${selectedStatus.replace('_', ' ')}`
                   }
                 </p>
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
-                {filteredProjects.map((project) => (
-                  <div key={project.id} className="p-6 hover:bg-gray-50 transition duration-200">
+                {filteredDeals.map((deal) => (
+                  <div key={deal.id} className="p-6 hover:bg-gray-50 transition duration-200">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
                           <h3 className="text-lg font-semibold text-gray-900">
-                            {project.lead_name}
+                            {deal.title || deal.deal_number}
                           </h3>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
-                            {getStatusIcon(project.status)}
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(deal.status)}`}>
+                            {getStatusIcon(deal.status)}
                             <span className="ml-1 capitalize">
-                              {project.status.replace('_', ' ')}
+                              {deal.status.replace('_', ' ')}
                             </span>
                           </span>
-                          {project.approval_needed && (
+                          {deal.needs_approval && (
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
                               Needs Approval
                             </span>
@@ -194,29 +193,29 @@ const ProjectsPage = () => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 mb-4">
                           <div className="flex items-center">
                             <User className="h-4 w-4 mr-2" />
-                            Sales: {project.sales_person}
+                            Sales: {deal.sales?.name || 'Unknown'}
                           </div>
                           <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-2" />
-                            Created: {formatDate(project.created_at)}
+                            Created: {formatDate(deal.created_at)}
                           </div>
                           <div className="flex items-center font-medium text-green-600">
                             <DollarSign className="h-4 w-4 mr-2" />
-                            Total: {formatPrice(project.total_value)}
+                            Total: {formatPrice(deal.final_amount || deal.total_amount)}
                           </div>
                         </div>
 
-                        {project.rejection_reason && (
+                        {deal.rejection_reason && (
                           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                             <p className="text-sm text-red-700">
-                              <strong>Rejection Reason:</strong> {project.rejection_reason}
+                              <strong>Rejection Reason:</strong> {deal.rejection_reason}
                             </p>
                           </div>
                         )}
                       </div>
 
                       <div className="flex items-center space-x-2 ml-4">
-                        {project.status === 'waiting_approval' && (
+                        {deal.status === 'waiting_approval' && (
                           <>
                             <button className="text-green-600 hover:text-green-900 p-2 hover:bg-green-50 rounded-md transition duration-200">
                               <Check className="h-4 w-4" />
@@ -235,43 +234,43 @@ const ProjectsPage = () => {
                       </div>
                     </div>
 
-                    {/* Project Items */}
+                    {/* Deal Items */}
                     <div className="bg-gray-50 rounded-lg p-4">
                       <h4 className="text-sm font-medium text-gray-900 mb-3">
-                        Project Items ({project.items.length})
+                        Deal Items ({deal.items?.length || 0})
                       </h4>
 
                       <div className="space-y-2">
-                        {project.items.map((item) => (
+                        {(deal.items || []).map((item) => (
                           <div key={item.id} className="flex items-center justify-between bg-white p-3 rounded-md shadow-sm">
                             <div className="flex-1">
                               <div className="flex items-center space-x-3">
                                 <span className="font-medium text-gray-900">
-                                  {item.product_name}
+                                  {item.product?.name || 'Unknown Product'}
                                 </span>
-                                {item.needs_approval && (
+                                {item.discount_percentage > 0 && (
                                   <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                    Below selling price
+                                    {item.discount_percentage}% discount
                                   </span>
                                 )}
                                 <span className="text-xs text-gray-500">
                                   Qty: {item.quantity}
                                 </span>
                               </div>
-                              {item.original_price !== item.negotiated_price && (
+                              {item.unit_price !== item.negotiated_price && (
                                 <p className="text-xs text-gray-500 mt-1">
-                                  Original: {formatPrice(item.original_price)} →
+                                  Original: {formatPrice(item.unit_price)} →
                                   Negotiated: {formatPrice(item.negotiated_price)}
                                 </p>
                               )}
                             </div>
                             <div className="text-right">
                               <div className="font-medium text-gray-900">
-                                {formatPrice(item.negotiated_price * item.quantity)}
+                                {formatPrice(item.subtotal)}
                               </div>
-                              {item.original_price !== item.negotiated_price && (
+                              {item.unit_price !== item.negotiated_price && (
                                 <div className="text-xs text-red-600">
-                                  -{formatPrice((item.original_price - item.negotiated_price) * item.quantity)}
+                                  -{formatPrice((item.unit_price - item.negotiated_price) * item.quantity)}
                                 </div>
                               )}
                             </div>
@@ -285,8 +284,7 @@ const ProjectsPage = () => {
             )}
           </div>
         )}
-      </div>
-    </Layout>
+    </div>
   )
 }
 
