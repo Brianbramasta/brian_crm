@@ -12,14 +12,19 @@ class DealItem extends Model
     protected $fillable = [
         'deal_id',
         'product_id',
-        'qty',
-        'harga_nego',
+        'quantity',
+        'unit_price',
+        'negotiated_price',
+        'discount_percentage',
         'subtotal',
+        'notes',
     ];
 
     protected $casts = [
-        'qty' => 'integer',
-        'harga_nego' => 'decimal:2',
+        'quantity' => 'integer',
+        'unit_price' => 'decimal:2',
+        'negotiated_price' => 'decimal:2',
+        'discount_percentage' => 'decimal:2',
         'subtotal' => 'decimal:2',
     ];
 
@@ -29,7 +34,7 @@ class DealItem extends Model
         parent::boot();
 
         static::saving(function ($dealItem) {
-            $dealItem->subtotal = $dealItem->qty * $dealItem->harga_nego;
+            $dealItem->subtotal = $dealItem->quantity * $dealItem->negotiated_price;
         });
 
         static::saved(function ($dealItem) {

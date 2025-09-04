@@ -25,14 +25,5 @@ class Task extends Model
         return $this->belongsTo(User::class);
     }
 
-    // Accessor for API compatibility
-    public function getCreatedAtAttribute($value)
-    {
-        return $this->asDateTime($value)->toISOString();
-    }
 
-    public function getUpdatedAtAttribute($value)
-    {
-        return $this->asDateTime($value)->toISOString();
-    }
 }

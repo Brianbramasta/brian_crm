@@ -15,13 +15,18 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('deal_id');
             $table->unsignedBigInteger('product_id');
-            $table->integer('qty');
-            $table->decimal('harga_nego', 12, 2);
-            $table->decimal('subtotal', 12, 2);
+            $table->integer('quantity')->default(1);
+            $table->decimal('unit_price', 12, 2);
+            $table->decimal('negotiated_price', 12, 2);
+            $table->decimal('discount_percentage', 5, 2)->default(0);
+            $table->decimal('subtotal', 12, 2)->storedAs('quantity * negotiated_price');
+            $table->text('notes')->nullable();
             $table->timestamps();
 
             $table->foreign('deal_id')->references('id')->on('deals')->onDelete('cascade');
-            $table->foreign('product_id')->references('id')->on('products');
+            $table->foreign('product_id')->references('id')->on('products')->onDelete('restrict');
+
+            $table->index(['deal_id', 'product_id']);
         });
     }
 

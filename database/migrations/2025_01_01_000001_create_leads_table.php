@@ -14,14 +14,19 @@ return new class extends Migration
         Schema::create('leads', function (Blueprint $table) {
             $table->id();
             $table->string('name', 100);
-            $table->string('contact', 50);
-            $table->string('address', 255);
-            $table->string('kebutuhan', 255);
-            $table->enum('status', ['new', 'contacted', 'qualified', 'lost'])->default('new');
-            $table->unsignedBigInteger('owner_user_id');
+            $table->string('email', 100)->nullable();
+            $table->string('phone', 50)->nullable();
+            $table->text('address')->nullable();
+            $table->text('needs')->nullable();
+            $table->enum('status', ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost'])->default('new');
+            $table->string('source', 100)->nullable();
+            $table->text('notes')->nullable();
+            $table->unsignedBigInteger('sales_id');
             $table->timestamps();
 
-            $table->foreign('owner_user_id')->references('id')->on('users');
+            $table->foreign('sales_id')->references('id')->on('users')->onDelete('restrict');
+            $table->index(['sales_id', 'status']);
+            $table->index('created_at');
         });
     }
 

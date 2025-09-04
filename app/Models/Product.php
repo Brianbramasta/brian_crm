@@ -11,31 +11,22 @@ class Product extends Model
 
     protected $fillable = [
         'name',
-        'hpp',
-        'margin_percent',
-        'harga_jual',
         'description',
-        'stock',
+        'hpp',
+        'margin_percentage',
+        'category',
+        'bandwidth',
+        'is_active',
     ];
 
     protected $casts = [
         'hpp' => 'decimal:2',
-        'margin_percent' => 'decimal:2',
-        'harga_jual' => 'decimal:2',
-        'stock' => 'integer',
+        'margin_percentage' => 'decimal:2',
+        'selling_price' => 'decimal:2',
+        'is_active' => 'boolean',
     ];
 
-    // Automatically calculate harga_jual when saving
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::saving(function ($product) {
-            if ($product->hpp && $product->margin_percent) {
-                $product->harga_jual = $product->hpp + ($product->hpp * $product->margin_percent / 100);
-            }
-        });
-    }
+    // Note: selling_price is calculated automatically by database trigger
 
     // Relationships
     public function dealItems()
@@ -53,9 +44,25 @@ class Product extends Model
         return $this->hasMany(Cart::class);
     }
 
-    // Accessor for API compatibility
+    // Scopes
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeByCategory($query, $category)
+    {
+        return $query->where('category', $category);
+    }
+
+    // Accessors
     public function getPriceAttribute()
     {
-        return $this->harga_jual;
+        return $this->selling_price;
+    }
+
+    public function getFormattedPriceAttribute()
+    {
+        return 'Rp ' . number_format($this->selling_price, 0, ',', '.');
     }
 }

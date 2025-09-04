@@ -21,7 +21,7 @@ class TaskController extends Controller
                     'id' => (string) $task->id,
                     'title' => $task->title,
                     'isCompleted' => $task->isCompleted,
-                    'createdAt' => $task->created_at->toISOString(),
+                    'createdAt' => $task->created_at ? $task->created_at->toISOString() : null,
                 ];
             });
 
@@ -47,7 +47,7 @@ class TaskController extends Controller
             'id' => (string) $task->id,
             'title' => $task->title,
             'isCompleted' => $task->isCompleted,
-            'createdAt' => $task->created_at->toISOString(),
+            'createdAt' => $task->created_at ? $task->created_at->toISOString() : null,
         ], 201);
     }
 
@@ -72,7 +72,7 @@ class TaskController extends Controller
             'id' => (string) $task->id,
             'title' => $task->title,
             'isCompleted' => $task->isCompleted,
-            'updatedAt' => $task->updated_at->toISOString(),
+            'updatedAt' => $task->updated_at ? $task->updated_at->toISOString() : null,
         ]);
     }
 

@@ -7,6 +7,9 @@ use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\LeadController;
+use App\Http\Controllers\Api\DealController;
+use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\ReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,22 +30,42 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::put('/user/profile', [AuthController::class, 'updateProfile']);
 
-    // Task Management
+    // CRM - Leads Management
+    Route::apiResource('leads', LeadController::class);
+    Route::get('/leads-stats', [LeadController::class, 'stats']);
+
+    // CRM - Deals Management
+    Route::apiResource('deals', DealController::class);
+    Route::post('/deals/{deal}/approve', [DealController::class, 'approve']);
+    Route::post('/deals/{deal}/close', [DealController::class, 'close']);
+    Route::get('/deals-stats', [DealController::class, 'stats']);
+    Route::get('/deals-approval', [DealController::class, 'needsApproval']);
+
+    // CRM - Customers Management
+    Route::apiResource('customers', CustomerController::class);
+    Route::get('/customers/{customer}/services', [CustomerController::class, 'services']);
+    Route::post('/customers/{customer}/services', [CustomerController::class, 'addService']);
+    Route::put('/customers/{customer}/services/{service}', [CustomerController::class, 'updateService']);
+
+    // Products Management
+    Route::apiResource('products', ProductController::class);
+
+    // Reports and Dashboard
+    Route::get('/dashboard', [ReportController::class, 'dashboard']);
+    Route::get('/reports/sales', [ReportController::class, 'salesReport']);
+    Route::get('/reports/revenue', [ReportController::class, 'revenueReport']);
+    Route::get('/reports/performance', [ReportController::class, 'performanceReport']);
+    Route::post('/reports/export', [ReportController::class, 'exportData']);
+
+    // Task Management (keeping existing functionality)
     Route::apiResource('tasks', TaskController::class);
 
-    // CRM - Leads
-    Route::apiResource('leads', LeadController::class);
-
-    // Cart Management
+    // Cart Management (keeping existing functionality)
     Route::apiResource('cart', CartController::class)->except(['show']);
 });
 
-// Public Routes
-// Products (public for browsing)
-Route::apiResource('products', ProductController::class)->only(['index', 'show']);
-
-// Products management (protected)
-Route::middleware('auth:sanctum')->group(function () {
-    Route::apiResource('products', ProductController::class)->except(['index', 'show']);
-});
+// Public Routes (if needed)
+// Products (public for browsing - commented out as this might not be needed for CRM)
+// Route::apiResource('products', ProductController::class)->only(['index', 'show']);

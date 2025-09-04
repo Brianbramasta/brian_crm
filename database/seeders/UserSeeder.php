@@ -15,22 +15,44 @@ class UserSeeder extends Seeder
     {
         $users = [
             [
-                'name' => 'Manager Admin',
+                'name' => 'Manager PT Smart',
                 'email' => 'manager@ptsmart.com',
                 'password' => Hash::make('password123'),
                 'role' => 'manager',
+                'is_active' => true,
+                'email_verified_at' => now(),
             ],
             [
-                'name' => 'Sales Person 1',
-                'email' => 'sales1@ptsmart.com',
+                'name' => 'Andi Pratama',
+                'email' => 'andi@ptsmart.com',
                 'password' => Hash::make('password123'),
                 'role' => 'sales',
+                'is_active' => true,
+                'email_verified_at' => now(),
             ],
             [
-                'name' => 'Sales Person 2',
-                'email' => 'sales2@ptsmart.com',
+                'name' => 'Sari Dewi',
+                'email' => 'sari@ptsmart.com',
                 'password' => Hash::make('password123'),
                 'role' => 'sales',
+                'is_active' => true,
+                'email_verified_at' => now(),
+            ],
+            [
+                'name' => 'Budi Santoso',
+                'email' => 'budi@ptsmart.com',
+                'password' => Hash::make('password123'),
+                'role' => 'sales',
+                'is_active' => true,
+                'email_verified_at' => now(),
+            ],
+            [
+                'name' => 'Diana Putri',
+                'email' => 'diana@ptsmart.com',
+                'password' => Hash::make('password123'),
+                'role' => 'sales',
+                'is_active' => true,
+                'email_verified_at' => now(),
             ],
         ];
 
