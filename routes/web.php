@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Route untuk mengakses aplikasi React CRM
 Route::get('/', function () {
-    return view('welcome');
+    return view('react-app');
 });
+
+// Catch-all route untuk React Router (SPA)
+Route::get('/{any}', function () {
+    return view('react-app');
+})->where('any', '.*');
