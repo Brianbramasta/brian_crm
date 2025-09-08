@@ -46,6 +46,8 @@ class DealController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.negotiated_price' => 'required|numeric|min:0',
+            'items.*.discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'items.*.notes' => 'nullable|string',
             'discount_amount' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
         ]);
@@ -70,11 +72,19 @@ class DealController extends Controller
         foreach ($request->items as $item) {
             $product = Product::findOrFail($item['product_id']);
 
+            // Use provided discount percentage or calculate it
+            $discountPercentage = $item['discount_percentage'] ?? 0;
+            if (!isset($item['discount_percentage']) && $product->selling_price > 0) {
+                $discountPercentage = (($product->selling_price - $item['negotiated_price']) / $product->selling_price) * 100;
+                $discountPercentage = max(0, $discountPercentage); // Ensure non-negative
+            }
+
             $deal->items()->create([
                 'product_id' => $item['product_id'],
                 'quantity' => $item['quantity'],
                 'unit_price' => $product->selling_price,
                 'negotiated_price' => $item['negotiated_price'],
+                'discount_percentage' => $discountPercentage,
                 'notes' => $item['notes'] ?? null,
             ]);
         }

@@ -16,7 +16,6 @@ class DealItem extends Model
         'unit_price',
         'negotiated_price',
         'discount_percentage',
-        'subtotal',
         'notes',
     ];
 
@@ -28,14 +27,10 @@ class DealItem extends Model
         'subtotal' => 'decimal:2',
     ];
 
-    // Automatically calculate subtotal
+    // Automatically update deal totals when items change
     protected static function boot()
     {
         parent::boot();
-
-        static::saving(function ($dealItem) {
-            $dealItem->subtotal = $dealItem->quantity * $dealItem->negotiated_price;
-        });
 
         static::saved(function ($dealItem) {
             $dealItem->deal->updateTotalAmount();

@@ -45,10 +45,6 @@ class Deal extends Model
                 $deal->deal_number = 'DEAL-' . date('Ymd') . '-' . str_pad(static::whereDate('created_at', today())->count() + 1, 3, '0', STR_PAD_LEFT);
             }
         });
-
-        static::saved(function ($deal) {
-            $deal->updateTotalAmount();
-        });
     }
 
     // Relationships
