@@ -214,7 +214,7 @@ const ProjectsPage = () => {
 
   const handleApprove = async (dealId) => {
     try {
-      const result = await dealService.approveDeal(dealId)
+      const result = await dealService.approveDeal(dealId, { approved: true })
       if (result.success) {
         await loadDeals()
         setError('')
@@ -231,9 +231,9 @@ const ProjectsPage = () => {
     if (!reason) return
 
     try {
-      const result = await dealService.updateDeal(dealId, {
-        status: 'rejected',
-        rejection_reason: reason
+      const result = await dealService.approveDeal(dealId, {
+        approved: false,
+        notes: reason
       })
       if (result.success) {
         await loadDeals()

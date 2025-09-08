@@ -114,4 +114,9 @@ class Deal extends Model
 
         $this->save();
     }
+
+    public function canBeApproved()
+    {
+        return $this->status === 'waiting_approval';
+    }
 }
