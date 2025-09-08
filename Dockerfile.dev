@@ -1,0 +1,98 @@
+# Development Dockerfile
+FROM php:8.2-apache
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    nodejs \
+    npm \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+
+# Enable Apache modules
+RUN a2enmod rewrite headers
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Set proper permissions for development
+RUN chown -R www-data:www-data /var/www/html
+
+# Configure Apache for development
+RUN echo '<VirtualHost *:80>\n\
+    DocumentRoot /var/www/html/public\n\
+    <Directory /var/www/html/public>\n\
+        AllowOverride All\n\
+        Require all granted\n\
+    </Directory>\n\
+    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
+    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
+</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
+
+# Create startup script for development
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Wait for database\n\
+echo "Waiting for database..."\n\
+while ! nc -z db 3306; do\n\
+  sleep 1\n\
+done\n\
+\n\
+echo "Database is ready!"\n\
+\n\
+# Install/update composer dependencies\n\
+if [ ! -d "vendor" ] || [ "composer.json" -nt "vendor" ]; then\n\
+    echo "Installing PHP dependencies..."\n\
+    composer install\n\
+fi\n\
+\n\
+# Install/update npm dependencies\n\
+cd frontend\n\
+if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules" ]; then\n\
+    echo "Installing Node.js dependencies..."\n\
+    npm install\n\
+fi\n\
+cd ..\n\
+\n\
+# Generate app key if not exists\n\
+if [ ! -f ".env" ]; then\n\
+    cp .env.example .env\n\
+    php artisan key:generate\n\
+fi\n\
+\n\
+# Run database migrations\n\
+php artisan migrate --force\n\
+\n\
+# Clear caches\n\
+php artisan config:clear\n\
+php artisan route:clear\n\
+php artisan view:clear\n\
+\n\
+# Set permissions\n\
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache\n\
+chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache\n\
+\n\
+# Start Apache\n\
+echo "Starting Apache..."\n\
+apache2-foreground' > /usr/local/bin/start-dev.sh
+
+RUN chmod +x /usr/local/bin/start-dev.sh
+
+# Install netcat for database connection checking
+RUN apt-get update && apt-get install -y netcat-traditional
+
+# Expose ports
+EXPOSE 80 5173
+
+# Start script
+CMD ["/usr/local/bin/start-dev.sh"]

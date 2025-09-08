@@ -1,79 +1,100 @@
 version: "3.8"
 
 services:
-  # MySQL Database
-  mysql:
-    image: mysql:8.0
-    container_name: ptsmart-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: ptsmart_crm
-      MYSQL_USER: laravel
-      MYSQL_PASSWORD: laravel
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - ptsmart-network
-
-  # Laravel Backend
-  backend:
+  # Laravel Application (Development)
+  app:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: ptsmart-backend
+      dockerfile: Dockerfile.dev
+    container_name: ptsmart-crm-dev
     restart: unless-stopped
-    ports:
-      - "8000:8000"
+    working_dir: /var/www/html
     volumes:
-      - .:/var/www
-      - ./storage:/var/www/storage
+      - ./:/var/www/html
+      - /var/www/html/vendor
+      - /var/www/html/node_modules
+    ports:
+      - "8000:80"
+      - "5173:5173" # Vite dev server
     environment:
-      - DB_HOST=mysql
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
       - DB_PORT=3306
-      - DB_DATABASE=ptsmart_crm
-      - DB_USERNAME=laravel
-      - DB_PASSWORD=laravel
+      - DB_DATABASE=ptsmart_crm_dev
+      - DB_USERNAME=ptsmart_user
+      - DB_PASSWORD=ptsmart_password
+      - APP_NAME=PT Smart CRM Dev
+      - APP_ENV=local
+      - APP_KEY=base64:$(openssl rand -base64 32)
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8000
+      - CACHE_DRIVER=file
+      - SESSION_DRIVER=file
+      - QUEUE_CONNECTION=sync
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=mailpit
+      - MAIL_PORT=1025
+      - MAIL_USERNAME=null
+      - MAIL_PASSWORD=null
+      - MAIL_ENCRYPTION=null
     depends_on:
-      - mysql
+      - db
+      - mailpit
     networks:
-      - ptsmart-network
+      - ptsmart-dev-network
 
-  # React Frontend
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-    container_name: ptsmart-frontend
+  # MySQL Database (Development)
+  db:
+    image: mysql:8.0
+    container_name: ptsmart-crm-db-dev
     restart: unless-stopped
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     environment:
-      - CHOKIDAR_USEPOLLING=true
-    depends_on:
-      - backend
+      MYSQL_DATABASE: ptsmart_crm_dev
+      MYSQL_USER: ptsmart_user
+      MYSQL_PASSWORD: ptsmart_password
+      MYSQL_ROOT_PASSWORD: root_password
+    volumes:
+      - db_dev_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
     networks:
-      - ptsmart-network
+      - ptsmart-dev-network
 
-  # Mailpit (Email Testing)
+  # Mailpit for Email Testing
   mailpit:
     image: axllent/mailpit
-    container_name: ptsmart-mailpit
+    container_name: ptsmart-crm-mailpit-dev
     restart: unless-stopped
     ports:
-      - "8025:8025"
       - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
     networks:
-      - ptsmart-network
+      - ptsmart-dev-network
+
+  # phpMyAdmin for Database Management
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: ptsmart-crm-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: ptsmart_user
+      PMA_PASSWORD: ptsmart_password
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    networks:
+      - ptsmart-dev-network
 
 volumes:
-  mysql_data:
+  db_dev_data:
+    driver: local
 
 networks:
-  ptsmart-network:
+  ptsmart-dev-network:
     driver: bridge
