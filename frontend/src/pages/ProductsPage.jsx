@@ -6,7 +6,10 @@ import { productService } from '../services/productService'
 import { useAuth } from '../contexts/AuthContext'
 
 const ProductsPage = () => {
+  console.log('ProductsPage component is rendering')
+
   const { user } = useAuth()
+  console.log('User from auth context:', user)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -28,16 +31,25 @@ const ProductsPage = () => {
   }, [])
 
   const loadProducts = async () => {
+    console.log('Loading products...')
     setLoading(true)
     try {
       const result = await productService.getAllProducts()
+      console.log('Products API result:', result)
       if (result.success) {
-        setProducts(result.data.data || result.data)
+        const productData = result.data.data || result.data
+        console.log('Raw product data:', productData)
+        console.log('Product data type:', typeof productData, 'Is array:', Array.isArray(productData))
+        setProducts(productData)
         setError('')
+        console.log('Products set to state:', productData)
+        console.log('Number of products:', productData?.length || 0)
       } else {
+        console.error('API error:', result.error)
         setError(result.error)
       }
     } catch (err) {
+      console.error('Exception in loadProducts:', err)
       setError('Failed to load products. Please try again.')
     } finally {
       setLoading(false)
@@ -151,15 +163,58 @@ const ProductsPage = () => {
     hotspot: products.filter(p => p.category === 'hotspot').length,
   }
 
-  return (
-    <div className="max-w-7xl mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-          <Wifi className="h-8 w-8 mr-3 text-indigo-600" />
-          ISP Product Catalog
-        </h1>
-        <p className="mt-2 text-gray-600">Manage internet services, packages, and pricing</p>
+  // Simple test to check if component renders at all
+  if (!user) {
+    console.log('No user found, rendering simple fallback')
+    return (
+      <div className="max-w-7xl mx-auto py-8">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+          <h3 className="text-lg font-medium text-yellow-800">Authentication Required</h3>
+          <p className="text-yellow-600 mt-2">Please make sure you are logged in to view products.</p>
+        </div>
       </div>
+    )
+  }
+
+  // If there's an error loading products, show a simplified version
+  if (error && !loading) {
+    console.log('Rendering error state with simplified UI')
+    return (
+      <div className="max-w-7xl mx-auto py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+            <Wifi className="h-8 w-8 mr-3 text-indigo-600" />
+            ISP Product Catalog
+          </h1>
+          <p className="mt-2 text-gray-600">Manage internet services, packages, and pricing</p>
+        </div>
+
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <h3 className="text-lg font-medium text-red-800">Error Loading Products</h3>
+          <p className="text-red-600 mt-2">{error}</p>
+          <button
+            onClick={loadProducts}
+            className="mt-3 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+          >
+            Retry Loading Products
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  console.log('About to render ProductsPage with state:', { products, loading, error, user })
+
+  try {
+    return (
+      <div className="max-w-7xl mx-auto py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+            <Wifi className="h-8 w-8 mr-3 text-indigo-600" />
+            ISP Product Catalog
+          </h1>
+          <p className="mt-2 text-gray-600">Manage internet services, packages, and pricing</p>
+        </div>
 
       {error && (
         <div className="mb-6">
@@ -169,6 +224,22 @@ const ProductsPage = () => {
           />
         </div>
       )}
+
+      {/* Debug Information - Remove in production */}
+      {/* {process.env.NODE_ENV === 'development' && (
+        <div className="mb-6 p-4 bg-gray-100 rounded-lg">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Debug Information</h3>
+          <div className="text-sm text-gray-600 space-y-1">
+            <div>Products array length: {products.length}</div>
+            <div>Loading state: {loading.toString()}</div>
+            <div>Error state: {error || 'none'}</div>
+            <div>Selected category: {selectedCategory}</div>
+            <div>Filtered products length: {filteredProducts.length}</div>
+            <div>User role: {user?.role || 'none'}</div>
+            <div>Raw products data (first 2): <pre className="text-xs">{JSON.stringify(products.slice(0, 2), null, 2)}</pre></div>
+          </div>
+        </div>
+      )} */}
 
       {/* Category Filter Tabs */}
       <div className="mb-6">
@@ -268,16 +339,13 @@ const ProductsPage = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {products.map((product) => (
+                    {filteredProducts.map((product) => (
                       <tr key={product.id} className="hover:bg-gray-50 transition duration-200">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10">
                               <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                {product.type === 'internet' && <Wifi className="h-5 w-5 text-indigo-600" />}
-                                {product.type === 'dedicated' && <Signal className="h-5 w-5 text-indigo-600" />}
-                                {product.type === 'cloud' && <Globe className="h-5 w-5 text-indigo-600" />}
-                                {!['internet', 'dedicated', 'cloud'].includes(product.type) && <Package className="h-5 w-5 text-indigo-600" />}
+                                {getCategoryIcon(product.category)}
                               </div>
                             </div>
                             <div className="ml-4">
@@ -285,7 +353,7 @@ const ProductsPage = () => {
                                 {product.name}
                               </div>
                               <div className="text-sm text-gray-500 capitalize">
-                                {product.type} Service
+                                {product.category} Service
                               </div>
                             </div>
                           </div>
@@ -293,14 +361,14 @@ const ProductsPage = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
                             <div className="font-medium text-green-600">
-                              Selling: {formatPrice(product.price)}
+                              Selling: {formatPrice(product.selling_price)}
                             </div>
                             <div className="text-xs text-gray-500 space-y-1">
                               <div>HPP: {formatPrice(product.hpp)}</div>
                               <div className="flex items-center justify-between">
-                                <span>Margin: {product.margin_percent}%</span>
+                                <span>Margin: {product.margin_percentage}%</span>
                                 <span className="font-medium text-blue-600">
-                                  +{formatPrice(product.price - product.hpp)}
+                                  +{formatPrice(product.selling_price - product.hpp)}
                                 </span>
                               </div>
                             </div>
@@ -312,13 +380,15 @@ const ProductsPage = () => {
                               {product.bandwidth}
                             </div>
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              product.type === 'dedicated'
+                              product.category === 'corporate'
                                 ? 'bg-purple-100 text-purple-800'
-                                : product.type === 'cloud'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-green-100 text-green-800'
+                                : product.category === 'gaming'
+                                ? 'bg-red-100 text-red-800'
+                                : product.category === 'hotspot'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-blue-100 text-blue-800'
                             }`}>
-                              {product.type.toUpperCase()}
+                              {product.category.toUpperCase()}
                             </span>
                           </div>
                         </td>
@@ -329,12 +399,22 @@ const ProductsPage = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
-                            <button className="text-indigo-600 hover:text-indigo-900 p-2 hover:bg-indigo-50 rounded-md transition duration-200">
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            <button className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-md transition duration-200">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            {user?.role === 'manager' && (
+                              <>
+                                <button
+                                  onClick={() => openEditModal(product)}
+                                  className="text-indigo-600 hover:text-indigo-900 p-2 hover:bg-indigo-50 rounded-md transition duration-200"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(product.id)}
+                                  className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-md transition duration-200"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -345,8 +425,155 @@ const ProductsPage = () => {
             )}
           </div>
         )}
+
+        {/* Add/Edit Product Modal */}
+        {showModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    {editingProduct ? 'Edit Product' : 'Add New Product'}
+                  </h3>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Product Name</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      rows={3}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Category</label>
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      <option value="residential">Residential</option>
+                      <option value="corporate">Corporate</option>
+                      <option value="gaming">Gaming</option>
+                      <option value="hotspot">Hotspot</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Bandwidth</label>
+                    <input
+                      type="text"
+                      value={formData.bandwidth}
+                      onChange={(e) => setFormData({ ...formData, bandwidth: e.target.value })}
+                      placeholder="e.g., 100Mbps"
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">HPP (Cost Price)</label>
+                    <input
+                      type="number"
+                      value={formData.hpp}
+                      onChange={(e) => setFormData({ ...formData, hpp: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Margin Percentage</label>
+                    <input
+                      type="number"
+                      value={formData.margin_percentage}
+                      onChange={(e) => setFormData({ ...formData, margin_percentage: e.target.value })}
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="is_active"
+                      checked={formData.is_active}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
+                      Active Product
+                    </label>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center"
+                    >
+                      {loading ? (
+                        <>
+                          <LoadingSpinner size="sm" />
+                          <span className="ml-2">Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          {editingProduct ? 'Update' : 'Create'} Product
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
-  )
+    )
+  } catch (error) {
+    console.error('Error rendering ProductsPage:', error)
+    return (
+      <div className="max-w-7xl mx-auto py-8">
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <h3 className="text-lg font-medium text-red-800">Error Loading Products Page</h3>
+          <p className="text-red-600 mt-2">There was an error loading the products page. Please check the console for details.</p>
+          <p className="text-sm text-red-500 mt-1">Error: {error.message}</p>
+        </div>
+      </div>
+    )
+  }
 }
 
 export default ProductsPage
