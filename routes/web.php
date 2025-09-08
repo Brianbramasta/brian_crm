@@ -18,6 +18,11 @@ Route::get('/', function () {
     return view('react-app');
 });
 
+// Debug route untuk troubleshooting asset loading
+Route::get('/debug-assets', function () {
+    return view('debug-react-app');
+});
+
 // Catch-all route untuk React Router (SPA)
 Route::get('/{any}', function () {
     return view('react-app');

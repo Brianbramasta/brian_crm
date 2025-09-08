@@ -10,8 +10,36 @@
     <!-- Favicon -->
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
 
-    <!-- React App CSS -->
-    <link rel="stylesheet" href="{{ asset('frontend/assets/css/index-1d875b6d.css') }}">
+    <!-- React App CSS - Dynamic asset loading -->
+    @php
+        $frontendPath = public_path('frontend/assets');
+        $cssFiles = [];
+        $jsFiles = [];
+
+        // Get CSS files
+        if (is_dir($frontendPath . '/css')) {
+            $cssFiles = glob($frontendPath . '/css/index-*.css');
+        }
+
+        // Get JS files
+        if (is_dir($frontendPath . '/js')) {
+            $jsFiles = [
+                'main' => glob($frontendPath . '/js/index-*.js'),
+                'vendor' => glob($frontendPath . '/js/vendor-*.js'),
+                'router' => glob($frontendPath . '/js/router-*.js'),
+                'utils' => glob($frontendPath . '/js/utils-*.js')
+            ];
+        }
+    @endphp
+
+    @if(!empty($cssFiles))
+        @foreach($cssFiles as $cssFile)
+            <link rel="stylesheet" href="{{ asset('frontend/assets/css/' . basename($cssFile)) }}">
+        @endforeach
+    @else
+        <!-- Fallback CSS -->
+        <link rel="stylesheet" href="{{ asset('frontend/assets/css/index-1d875b6d.css') }}">
+    @endif
 
     <style>
         /* Loading spinner styles */
@@ -83,12 +111,31 @@
         </div>
     </div>
 
-    <!-- Fallback if React app files are not found -->
+    <!-- Error handling and loading detection -->
     <script>
-        // Check if React app loaded after 5 seconds
+        // Track if React app has loaded successfully
+        let reactAppLoaded = false;
+
+        // Set up error handling for module loading
+        window.addEventListener('error', function(e) {
+            if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+                console.error('Failed to load asset:', e.target.src || e.target.href);
+                showErrorMessage();
+            }
+        });
+
+        // Check if React app loaded after a reasonable time
         setTimeout(function() {
             const rootElement = document.getElementById('root');
             if (rootElement && rootElement.innerHTML.includes('loading-container')) {
+                showErrorMessage();
+            }
+        }, 5000);
+
+        // Function to show error message
+        function showErrorMessage() {
+            const rootElement = document.getElementById('root');
+            if (rootElement) {
                 rootElement.innerHTML = `
                     <div class="error-container">
                         <div class="error-title">PT Smart CRM</div>
@@ -102,11 +149,55 @@
                     </div>
                 `;
             }
-        }, 5000);
+        }
+
+        // Mark React app as loaded when it actually loads
+        window.addEventListener('DOMContentLoaded', function() {
+            // This will be overridden by React when it loads
+            setTimeout(function() {
+                const rootElement = document.getElementById('root');
+                if (rootElement && !rootElement.innerHTML.includes('loading-container') && !rootElement.innerHTML.includes('error-container')) {
+                    reactAppLoaded = true;
+                }
+            }, 1000);
+        });
     </script>
 
-    <!-- React App JavaScript -->
-    <script type="module" src="{{ asset('frontend/assets/js/index-25f7e6c5.js') }}" defer></script>
+    <!-- React App JavaScript - Dynamic asset loading -->
+    @if(!empty($jsFiles['vendor']))
+        @foreach($jsFiles['vendor'] as $vendorFile)
+            <link rel="modulepreload" crossorigin href="{{ asset('frontend/assets/js/' . basename($vendorFile)) }}">
+        @endforeach
+    @endif
+
+    @if(!empty($jsFiles['router']))
+        @foreach($jsFiles['router'] as $routerFile)
+            <link rel="modulepreload" crossorigin href="{{ asset('frontend/assets/js/' . basename($routerFile)) }}">
+        @endforeach
+    @endif
+
+    @if(!empty($jsFiles['utils']))
+        @foreach($jsFiles['utils'] as $utilsFile)
+            <link rel="modulepreload" crossorigin href="{{ asset('frontend/assets/js/' . basename($utilsFile)) }}">
+        @endforeach
+    @endif
+
+    @if(!empty($jsFiles['main']))
+        @foreach($jsFiles['main'] as $mainFile)
+            <script type="module" crossorigin src="{{ asset('frontend/assets/js/' . basename($mainFile)) }}" defer></script>
+        @endforeach
+    @else
+        <!-- Fallback JS - Use the first available index file -->
+        @php
+            $fallbackIndexFiles = glob(public_path('frontend/assets/js/index-*.js'));
+        @endphp
+        @if(!empty($fallbackIndexFiles))
+            <script type="module" src="{{ asset('frontend/assets/js/' . basename($fallbackIndexFiles[0])) }}" defer></script>
+        @else
+            <!-- Ultimate fallback if no index files found -->
+            <script type="module" src="{{ asset('frontend/assets/js/index.js') }}" defer></script>
+        @endif
+    @endif
 
     <!-- Fallback untuk browser yang tidak mendukung modules -->
     <script nomodule>
