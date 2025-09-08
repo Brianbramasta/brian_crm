@@ -2,9 +2,18 @@ import { apiClient } from './apiClient'
 
 export const reportService = {
   // Get dashboard statistics
-  getDashboardStats: async (period = 'month') => {
+  getDashboardStats: async (period = 'month', dateRange = null) => {
     try {
-      const response = await apiClient.get(`/reports/dashboard-stats?period=${period}`)
+      const params = { period }
+
+      // If dateRange is provided, use it instead of period
+      if (dateRange && dateRange.start && dateRange.end) {
+        params.start_date = dateRange.start
+        params.end_date = dateRange.end
+        delete params.period // Remove period when using specific dates
+      }
+
+      const response = await apiClient.get('/reports/dashboard-stats', { params })
       return {
         success: true,
         data: response.data

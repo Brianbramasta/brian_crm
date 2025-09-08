@@ -17,7 +17,7 @@ function App() {
     <AuthProvider>
       <div className="App">
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<LoginPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/dashboard"

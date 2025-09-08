@@ -17,6 +17,41 @@ const ReportsPage = () => {
   })
   const [statistics, setStatistics] = useState(null)
 
+  // Update date range when period changes
+  useEffect(() => {
+    const now = new Date()
+    let start, end
+
+    switch (selectedPeriod) {
+      case 'week':
+        const startOfWeek = new Date(now)
+        startOfWeek.setDate(now.getDate() - now.getDay())
+        const endOfWeek = new Date(startOfWeek)
+        endOfWeek.setDate(startOfWeek.getDate() + 6)
+        start = startOfWeek
+        end = endOfWeek
+        break
+      case 'quarter':
+        const quarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)
+        const quarterEnd = new Date(quarterStart.getFullYear(), quarterStart.getMonth() + 3, 0)
+        start = quarterStart
+        end = quarterEnd
+        break
+      case 'year':
+        start = new Date(now.getFullYear(), 0, 1)
+        end = new Date(now.getFullYear(), 11, 31)
+        break
+      default: // month
+        start = new Date(now.getFullYear(), now.getMonth(), 1)
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    }
+
+    setDateRange({
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    })
+  }, [selectedPeriod])
+
   useEffect(() => {
     loadReports()
     loadStatistics()
@@ -41,7 +76,10 @@ const ReportsPage = () => {
 
   const loadStatistics = async () => {
     try {
-      const result = await reportService.getDashboardStats(selectedPeriod)
+      const result = await reportService.getDashboardStats(selectedPeriod, {
+        start: dateRange.start,
+        end: dateRange.end
+      })
       if (result.success) {
         setStatistics(result.data)
         setError('')

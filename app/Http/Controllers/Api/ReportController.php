@@ -23,13 +23,46 @@ class ReportController extends Controller
      */
     public function dashboard(Request $request)
     {
+        $request->validate([
+            'start_date' => 'sometimes|date',
+            'end_date' => 'sometimes|date|after_or_equal:start_date',
+            'period' => 'sometimes|in:week,month,quarter,year',
+        ]);
+
         $user = $request->user();
 
-        // Base queries with role-based filtering
-        $leadsQuery = Lead::query();
-        $dealsQuery = Deal::query();
-        $customersQuery = Customer::query();
-        $servicesQuery = CustomerService::whereHas('customer', function ($q) use ($user) {
+        // Determine date range based on parameters
+        if ($request->has('start_date') && $request->has('end_date')) {
+            $startDate = Carbon::parse($request->start_date);
+            $endDate = Carbon::parse($request->end_date);
+        } else {
+            // Use period-based date range (default to current month)
+            $period = $request->get('period', 'month');
+            switch ($period) {
+                case 'week':
+                    $startDate = now()->startOfWeek();
+                    $endDate = now()->endOfWeek();
+                    break;
+                case 'quarter':
+                    $startDate = now()->startOfQuarter();
+                    $endDate = now()->endOfQuarter();
+                    break;
+                case 'year':
+                    $startDate = now()->startOfYear();
+                    $endDate = now()->endOfYear();
+                    break;
+                default: // month
+                    $startDate = now()->startOfMonth();
+                    $endDate = now()->endOfMonth();
+            }
+        }
+
+        // Base queries with role-based and date filtering
+        $leadsQuery = Lead::whereBetween('created_at', [$startDate, $endDate]);
+        $dealsQuery = Deal::whereBetween('created_at', [$startDate, $endDate]);
+        $customersQuery = Customer::whereBetween('created_at', [$startDate, $endDate]);
+        $servicesQuery = CustomerService::whereHas('customer', function ($q) use ($user, $startDate, $endDate) {
+            $q->whereBetween('created_at', [$startDate, $endDate]);
             if ($user->isSales()) {
                 $q->where('sales_id', $user->id);
             }
@@ -42,54 +75,60 @@ class ReportController extends Controller
         }
 
         // Leads statistics
+        $totalLeads = $leadsQuery->count();
         $leadsStats = [
-            'total' => $leadsQuery->count(),
-            'new_this_month' => $leadsQuery->whereMonth('created_at', now()->month)->count(),
+            'total' => $totalLeads,
+            'new_this_period' => $totalLeads, // All leads in the selected period are "new" for this period
             'by_status' => [
-                'new' => $leadsQuery->where('status', 'new')->count(),
-                'contacted' => $leadsQuery->where('status', 'contacted')->count(),
-                'qualified' => $leadsQuery->where('status', 'qualified')->count(),
-                'proposal' => $leadsQuery->where('status', 'proposal')->count(),
-                'negotiation' => $leadsQuery->where('status', 'negotiation')->count(),
-                'closed_won' => $leadsQuery->where('status', 'closed_won')->count(),
-                'closed_lost' => $leadsQuery->where('status', 'closed_lost')->count(),
+                'new' => (clone $leadsQuery)->where('status', 'new')->count(),
+                'contacted' => (clone $leadsQuery)->where('status', 'contacted')->count(),
+                'qualified' => (clone $leadsQuery)->where('status', 'qualified')->count(),
+                'proposal' => (clone $leadsQuery)->where('status', 'proposal')->count(),
+                'negotiation' => (clone $leadsQuery)->where('status', 'negotiation')->count(),
+                'closed_won' => (clone $leadsQuery)->where('status', 'closed_won')->count(),
+                'closed_lost' => (clone $leadsQuery)->where('status', 'closed_lost')->count(),
             ]
         ];
 
         // Deals statistics
+        $totalDeals = $dealsQuery->count();
         $dealsStats = [
-            'total' => $dealsQuery->count(),
-            'waiting_approval' => $dealsQuery->where('status', 'waiting_approval')->count(),
-            'approved' => $dealsQuery->where('status', 'approved')->count(),
-            'rejected' => $dealsQuery->where('status', 'rejected')->count(),
-            'closed_won' => $dealsQuery->where('status', 'closed_won')->count(),
-            'total_value' => $dealsQuery->where('status', 'approved')->sum('final_amount'),
-            'pending_value' => $dealsQuery->where('status', 'waiting_approval')->sum('final_amount'),
+            'total' => $totalDeals,
+            'waiting_approval' => (clone $dealsQuery)->where('status', 'waiting_approval')->count(),
+            'approved' => (clone $dealsQuery)->where('status', 'approved')->count(),
+            'rejected' => (clone $dealsQuery)->where('status', 'rejected')->count(),
+            'closed_won' => (clone $dealsQuery)->where('status', 'closed_won')->count(),
+            'total_value' => (clone $dealsQuery)->where('status', 'approved')->sum('final_amount'),
+            'pending_value' => (clone $dealsQuery)->where('status', 'waiting_approval')->sum('final_amount'),
         ];
 
         // Customers statistics
+        $totalCustomers = $customersQuery->count();
         $customersStats = [
-            'total' => $customersQuery->count(),
-            'active' => $customersQuery->where('status', 'active')->count(),
-            'new_this_month' => $customersQuery->whereMonth('created_at', now()->month)->count(),
-            'corporate' => $customersQuery->where('customer_type', 'corporate')->count(),
-            'individual' => $customersQuery->where('customer_type', 'individual')->count(),
+            'total' => $totalCustomers,
+            'active' => (clone $customersQuery)->where('status', 'active')->count(),
+            'new_this_period' => $totalCustomers, // All customers in the selected period are "new" for this period
+            'corporate' => (clone $customersQuery)->where('customer_type', 'corporate')->count(),
+            'individual' => (clone $customersQuery)->where('customer_type', 'individual')->count(),
         ];
 
         // Revenue statistics
         $activeServices = $servicesQuery->where('status', 'active');
+        $totalRevenue = (clone $dealsQuery)->where('status', 'approved')->sum('final_amount');
+        $conversionRate = $totalLeads > 0 ? ((clone $leadsQuery)->where('status', 'closed_won')->count() / $totalLeads) * 100 : 0;
+
         $revenueStats = [
             'monthly_recurring_revenue' => $activeServices->sum('monthly_fee'),
             'active_services' => $activeServices->count(),
-            'average_revenue_per_customer' => $customersQuery->count() > 0 ?
-                $activeServices->sum('monthly_fee') / $customersQuery->count() : 0,
+            'average_revenue_per_customer' => $totalCustomers > 0 ? $totalRevenue / $totalCustomers : 0,
+            'total_revenue' => $totalRevenue,
         ];
 
-        // Recent activities
+        // Recent activities (filtered by date range)
         $recentActivities = [];
 
         // Recent leads
-        $recentLeads = $leadsQuery->latest()->limit(3)->get();
+        $recentLeads = (clone $leadsQuery)->latest()->limit(3)->get();
         foreach ($recentLeads as $lead) {
             $recentActivities[] = [
                 'type' => 'lead_created',
@@ -100,7 +139,7 @@ class ReportController extends Controller
         }
 
         // Recent deals
-        $recentDeals = $dealsQuery->latest()->limit(3)->get();
+        $recentDeals = (clone $dealsQuery)->latest()->limit(3)->get();
         foreach ($recentDeals as $deal) {
             $recentActivities[] = [
                 'type' => 'deal_created',
@@ -111,7 +150,7 @@ class ReportController extends Controller
         }
 
         // Recent customers
-        $recentCustomers = $customersQuery->latest()->limit(2)->get();
+        $recentCustomers = (clone $customersQuery)->latest()->limit(2)->get();
         foreach ($recentCustomers as $customer) {
             $recentActivities[] = [
                 'type' => 'customer_added',
@@ -134,6 +173,20 @@ class ReportController extends Controller
             'customers' => $customersStats,
             'revenue' => $revenueStats,
             'recent_activities' => $recentActivities,
+            // Frontend expected fields
+            'totalRevenue' => $totalRevenue,
+            'totalCustomers' => $totalCustomers,
+            'totalLeads' => $totalLeads,
+            'activeServices' => $activeServices->count(),
+            'conversionRate' => round($conversionRate, 2),
+            'avgDealValue' => $totalDeals > 0 ? $totalRevenue / $totalDeals : 0,
+            'monthlyGrowth' => 0, // TODO: Calculate actual growth
+            'customerRetention' => 0, // TODO: Calculate actual retention
+            'newLeads' => $totalLeads,
+            'period' => [
+                'start' => $startDate->format('Y-m-d'),
+                'end' => $endDate->format('Y-m-d'),
+            ],
         ]);
     }
 
