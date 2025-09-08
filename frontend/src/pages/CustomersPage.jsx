@@ -12,8 +12,22 @@ const CustomersPage = () => {
   const [error, setError] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [showServiceModal, setShowServiceModal] = useState(false)
+  const [showCustomerModal, setShowCustomerModal] = useState(false)
+  const [editingCustomer, setEditingCustomer] = useState(null)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [customerServices, setCustomerServices] = useState([])
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    customer_type: 'individual',
+    billing_address: '',
+    installation_address: '',
+    contact_person: '',
+    company_name: '',
+    tax_number: '',
+    notes: ''
+  })
 
   useEffect(() => {
     loadCustomers()
@@ -48,6 +62,82 @@ const CustomersPage = () => {
       }
     } catch (err) {
       setError('Failed to load customer services.')
+    }
+  }
+
+  const openCreateCustomerModal = () => {
+    setEditingCustomer(null)
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      customer_type: 'individual',
+      billing_address: '',
+      installation_address: '',
+      contact_person: '',
+      company_name: '',
+      tax_number: '',
+      notes: ''
+    })
+    setShowCustomerModal(true)
+  }
+
+  const openEditCustomerModal = (customer) => {
+    setEditingCustomer(customer)
+    setFormData({
+      name: customer.name || '',
+      email: customer.email || '',
+      phone: customer.phone || '',
+      customer_type: customer.customer_type || 'individual',
+      billing_address: customer.billing_address || '',
+      installation_address: customer.installation_address || '',
+      contact_person: customer.contact_person || '',
+      company_name: customer.company_name || '',
+      tax_number: customer.tax_number || '',
+      notes: customer.notes || ''
+    })
+    setShowCustomerModal(true)
+  }
+
+  const handleCustomerSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+
+    try {
+      let result
+      if (editingCustomer) {
+        result = await customerService.updateCustomer(editingCustomer.id, formData)
+      } else {
+        result = await customerService.createCustomer(formData)
+      }
+
+      if (result.success) {
+        await loadCustomers()
+        setShowCustomerModal(false)
+        setError('')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to save customer. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteCustomer = async (customerId) => {
+    if (!window.confirm('Are you sure you want to delete this customer?')) return
+
+    try {
+      const result = await customerService.deleteCustomer(customerId)
+      if (result.success) {
+        await loadCustomers()
+        setError('')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to delete customer. Please try again.')
     }
   }
 
@@ -176,7 +266,10 @@ const CustomersPage = () => {
                     {user?.role === 'manager' ? 'All customers' : 'Your assigned customers'}
                   </p>
                 </div>
-                <button className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center">
+                <button
+                  onClick={openCreateCustomerModal}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Customer
                 </button>
@@ -257,12 +350,20 @@ const CustomersPage = () => {
                         >
                           <Eye className="h-4 w-4" />
                         </button>
-                        <button className="text-indigo-600 hover:text-indigo-900 p-2 hover:bg-indigo-50 rounded-md transition duration-200">
+                        <button
+                          onClick={() => openEditCustomerModal(customer)}
+                          className="text-indigo-600 hover:text-indigo-900 p-2 hover:bg-indigo-50 rounded-md transition duration-200"
+                        >
                           <Edit2 className="h-4 w-4" />
                         </button>
-                        <button className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-md transition duration-200">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {user?.role === 'manager' && (
+                          <button
+                            onClick={() => handleDeleteCustomer(customer.id)}
+                            className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-md transition duration-200"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -382,6 +483,179 @@ const CustomersPage = () => {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Add/Edit Modal */}
+      {showCustomerModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
+                </h3>
+                <button
+                  onClick={() => setShowCustomerModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCustomerSubmit} className="space-y-4">
+                {/* Basic Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Customer Name *</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Customer Type *</label>
+                    <select
+                      value={formData.customer_type}
+                      onChange={(e) => setFormData({ ...formData, customer_type: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      <option value="individual">Individual</option>
+                      <option value="corporate">Corporate</option>
+                      <option value="government">Government</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Contact Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Email *</label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Phone *</label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Corporate Information (conditional) */}
+                {formData.customer_type === 'corporate' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Company Name</label>
+                      <input
+                        type="text"
+                        value={formData.company_name}
+                        onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Tax Number (NPWP)</label>
+                      <input
+                        type="text"
+                        value={formData.tax_number}
+                        onChange={(e) => setFormData({ ...formData, tax_number: e.target.value })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Contact Person</label>
+                  <input
+                    type="text"
+                    value={formData.contact_person}
+                    onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Contact person name"
+                  />
+                </div>
+
+                {/* Addresses */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Billing Address *</label>
+                  <textarea
+                    value={formData.billing_address}
+                    onChange={(e) => setFormData({ ...formData, billing_address: e.target.value })}
+                    rows={2}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Complete billing address"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Installation Address</label>
+                  <textarea
+                    value={formData.installation_address}
+                    onChange={(e) => setFormData({ ...formData, installation_address: e.target.value })}
+                    rows={2}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Service installation address (if different from billing)"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Notes</label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    rows={3}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Additional notes about the customer"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomerModal(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 flex items-center"
+                  >
+                    {loading ? (
+                      <>
+                        <LoadingSpinner size="sm" />
+                        <span className="ml-2">Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        {editingCustomer ? 'Update Customer' : 'Create Customer'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
