@@ -67,6 +67,54 @@ class CustomerController extends Controller
     }
 
     /**
+     * Store a new customer
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'lead_id' => 'nullable|exists:leads,id',
+            'name' => 'required|string|max:100',
+            'email' => 'nullable|email|max:100',
+            'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string',
+            'billing_address' => 'nullable|string',
+            'installation_address' => 'nullable|string',
+            'customer_type' => 'required|in:individual,corporate',
+            'status' => 'nullable|in:active,inactive,suspended',
+            'activation_date' => 'nullable|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        // Check if user can access the lead (if provided)
+        if ($request->lead_id) {
+            $lead = \App\Models\Lead::findOrFail($request->lead_id);
+            if ($request->user()->isSales() && $lead->sales_id !== $request->user()->id) {
+                return response()->json(['message' => 'Access denied to this lead'], 403);
+            }
+        }
+
+        $customer = Customer::create([
+            'lead_id' => $request->lead_id,
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'address' => $request->address,
+            'billing_address' => $request->billing_address,
+            'installation_address' => $request->installation_address,
+            'customer_type' => $request->customer_type,
+            'status' => $request->status ?? 'active',
+            'sales_id' => $request->user()->id,
+            'activation_date' => $request->activation_date ?? now()->format('Y-m-d'),
+            'notes' => $request->notes,
+        ]);
+
+        // Load relationships for response
+        $customer->load(['sales', 'lead']);
+
+        return response()->json($customer, 201);
+    }
+
+    /**
      * Display the specified customer
      */
     public function show(Request $request, Customer $customer)
@@ -143,6 +191,28 @@ class CustomerController extends Controller
         ]));
 
         return response()->json($customer->load('sales'));
+    }
+
+    /**
+     * Delete a customer
+     */
+    public function destroy(Request $request, Customer $customer)
+    {
+        // Check access permission
+        if ($request->user()->isSales() && $customer->sales_id !== $request->user()->id) {
+            return response()->json(['message' => 'Access denied'], 403);
+        }
+
+        // Check if customer has active services
+        if ($customer->services()->where('status', 'active')->exists()) {
+            return response()->json([
+                'message' => 'Cannot delete customer with active services. Please terminate all services first.'
+            ], 422);
+        }
+
+        $customer->delete();
+
+        return response()->json(['message' => 'Customer deleted successfully']);
     }
 
     /**
