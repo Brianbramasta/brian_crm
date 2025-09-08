@@ -20,7 +20,13 @@ export const reportService = {
   // Generate sales report
   generateSalesReport: async (dateRange) => {
     try {
-      const response = await apiClient.post('/reports/sales', dateRange)
+      const response = await apiClient.get('/reports/sales', {
+        params: {
+          start_date: dateRange.startDate,
+          end_date: dateRange.endDate,
+          sales_id: dateRange.salesId
+        }
+      })
       return {
         success: true,
         data: response.data
@@ -36,7 +42,13 @@ export const reportService = {
   // Generate revenue report
   generateRevenueReport: async (dateRange) => {
     try {
-      const response = await apiClient.post('/reports/revenue', dateRange)
+      const response = await apiClient.get('/reports/revenue', {
+        params: {
+          start_date: dateRange.startDate,
+          end_date: dateRange.endDate,
+          sales_id: dateRange.salesId
+        }
+      })
       return {
         success: true,
         data: response.data
@@ -45,6 +57,45 @@ export const reportService = {
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to generate revenue report'
+      }
+    }
+  },
+
+  // Export report to Excel
+  exportToExcel: async (reportType, dateRange) => {
+    try {
+      const response = await apiClient.get('/reports/export', {
+        params: {
+          type: reportType,
+          start_date: dateRange.startDate,
+          end_date: dateRange.endDate,
+          sales_id: dateRange.salesId
+        },
+        responseType: 'blob'
+      })
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
+      const filename = `${reportType}_report_${timestamp}.xlsx`
+
+      link.setAttribute('download', filename)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+
+      return {
+        success: true
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to export report'
       }
     }
   },

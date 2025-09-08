@@ -10,6 +10,11 @@ use App\Models\Customer;
 use App\Models\CustomerService;
 use App\Models\User;
 use Carbon\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\LeadsExport;
+use App\Exports\DealsExport;
+use App\Exports\CustomersExport;
+use App\Exports\SalesReportExport;
 
 class ReportController extends Controller
 {
@@ -164,17 +169,22 @@ class ReportController extends Controller
         }
 
         // Summary statistics
+        $totalLeads = $leadsQuery->count();
+        $totalDeals = $dealsQuery->count();
+        $totalCustomers = $customersQuery->count();
+        $totalRevenue = (clone $dealsQuery)->where('status', 'approved')->sum('final_amount');
+        $closedWonLeads = (clone $leadsQuery)->where('status', 'closed_won')->count();
+
         $summary = [
             'period' => [
                 'start_date' => $startDate->format('Y-m-d'),
                 'end_date' => $endDate->format('Y-m-d'),
             ],
-            'total_leads' => $leadsQuery->count(),
-            'total_deals' => $dealsQuery->count(),
-            'total_customers' => $customersQuery->count(),
-            'total_revenue' => $dealsQuery->where('status', 'approved')->sum('final_amount'),
-            'conversion_rate' => $leadsQuery->count() > 0 ?
-                ($leadsQuery->where('status', 'closed_won')->count() / $leadsQuery->count()) * 100 : 0,
+            'total_leads' => $totalLeads,
+            'total_deals' => $totalDeals,
+            'total_customers' => $totalCustomers,
+            'total_revenue' => $totalRevenue,
+            'conversion_rate' => $totalLeads > 0 ? ($closedWonLeads / $totalLeads) * 100 : 0,
         ];
 
         // By sales person (if manager)
@@ -190,15 +200,20 @@ class ReportController extends Controller
                 $salesCustomers = Customer::where('sales_id', $sales->id)
                                         ->whereBetween('created_at', [$startDate, $endDate]);
 
+                $leadsCount = $salesLeads->count();
+                $dealsCount = $salesDeals->count();
+                $customersCount = $salesCustomers->count();
+                $revenue = (clone $salesDeals)->where('status', 'approved')->sum('final_amount');
+                $closedWonCount = (clone $salesLeads)->where('status', 'closed_won')->count();
+
                 $bySales[] = [
                     'sales_id' => $sales->id,
                     'sales_name' => $sales->name,
-                    'leads_count' => $salesLeads->count(),
-                    'deals_count' => $salesDeals->count(),
-                    'customers_count' => $salesCustomers->count(),
-                    'revenue' => $salesDeals->where('status', 'approved')->sum('final_amount'),
-                    'conversion_rate' => $salesLeads->count() > 0 ?
-                        ($salesLeads->where('status', 'closed_won')->count() / $salesLeads->count()) * 100 : 0,
+                    'leads_count' => $leadsCount,
+                    'deals_count' => $dealsCount,
+                    'customers_count' => $customersCount,
+                    'revenue' => $revenue,
+                    'conversion_rate' => $leadsCount > 0 ? ($closedWonCount / $leadsCount) * 100 : 0,
                 ];
             }
         }
@@ -267,7 +282,7 @@ class ReportController extends Controller
     }
 
     /**
-     * Export report (placeholder for Excel export)
+     * Export report to Excel
      */
     public function export(Request $request)
     {
@@ -278,90 +293,69 @@ class ReportController extends Controller
             'sales_id' => 'sometimes|exists:users,id',
         ]);
 
-        // This is a placeholder - in a real implementation, you would use
-        // a package like Laravel Excel to generate actual Excel files
-
         $type = $request->type;
         $startDate = Carbon::parse($request->start_date);
         $endDate = Carbon::parse($request->end_date);
         $user = $request->user();
 
-        $data = [];
+        // Generate filename with timestamp
+        $timestamp = now()->format('Y-m-d_H-i-s');
+        $filename = "{$type}_report_{$timestamp}.xlsx";
 
         switch ($type) {
             case 'leads':
-                $query = Lead::whereBetween('created_at', [$startDate, $endDate]);
+                $query = Lead::with('sales')->whereBetween('created_at', [$startDate, $endDate]);
                 if ($user->isSales()) {
                     $query->where('sales_id', $user->id);
                 } elseif ($request->has('sales_id')) {
                     $query->where('sales_id', $request->sales_id);
                 }
-                $data = $query->with('sales')->get()->map(function ($lead) {
-                    return [
-                        'Name' => $lead->name,
-                        'Email' => $lead->email,
-                        'Phone' => $lead->phone,
-                        'Status' => $lead->status,
-                        'Sales Person' => $lead->sales->name,
-                        'Created Date' => $lead->created_at->format('Y-m-d'),
-                    ];
-                });
+                $data = $query->get();
+                $export = new LeadsExport($data, 'Laporan Leads', $startDate, $endDate, $user);
                 break;
 
             case 'deals':
-                $query = Deal::whereBetween('created_at', [$startDate, $endDate]);
+                $query = Deal::with(['lead', 'sales', 'approver'])->whereBetween('created_at', [$startDate, $endDate]);
                 if ($user->isSales()) {
                     $query->where('sales_id', $user->id);
                 } elseif ($request->has('sales_id')) {
                     $query->where('sales_id', $request->sales_id);
                 }
-                $data = $query->with(['lead', 'sales'])->get()->map(function ($deal) {
-                    return [
-                        'Deal Number' => $deal->deal_number,
-                        'Title' => $deal->title,
-                        'Lead Name' => $deal->lead->name,
-                        'Status' => $deal->status,
-                        'Total Amount' => $deal->final_amount,
-                        'Sales Person' => $deal->sales->name,
-                        'Created Date' => $deal->created_at->format('Y-m-d'),
-                    ];
-                });
+                $data = $query->get();
+                $export = new DealsExport($data, 'Laporan Deals', $startDate, $endDate, $user);
                 break;
 
             case 'customers':
-                $query = Customer::whereBetween('created_at', [$startDate, $endDate]);
+                $query = Customer::with(['sales', 'lead'])->whereBetween('created_at', [$startDate, $endDate]);
                 if ($user->isSales()) {
                     $query->where('sales_id', $user->id);
                 } elseif ($request->has('sales_id')) {
                     $query->where('sales_id', $request->sales_id);
                 }
-                $data = $query->with('sales')->get()->map(function ($customer) {
-                    return [
-                        'Customer Number' => $customer->customer_number,
-                        'Name' => $customer->name,
-                        'Email' => $customer->email,
-                        'Phone' => $customer->phone,
-                        'Type' => $customer->customer_type,
-                        'Status' => $customer->status,
-                        'Sales Person' => $customer->sales->name,
-                        'Activation Date' => $customer->activation_date,
-                    ];
-                });
+                $data = $query->get();
+                $export = new CustomersExport($data, 'Laporan Customers', $startDate, $endDate, $user);
                 break;
+
+            case 'sales':
+                // Generate sales report data
+                $salesReport = $this->sales($request);
+                $reportData = $salesReport->getData(true); // Convert to array
+
+                $export = new SalesReportExport(
+                    $reportData['by_sales'],
+                    $reportData['summary'],
+                    'Laporan Performance Sales',
+                    $startDate,
+                    $endDate,
+                    $user
+                );
+                break;
+
+            default:
+                return response()->json(['message' => 'Invalid report type'], 400);
         }
 
-        // In a real implementation, return Excel file download
-        // For now, return JSON data that could be converted to Excel on frontend
-        return response()->json([
-            'type' => $type,
-            'period' => [
-                'start_date' => $startDate->format('Y-m-d'),
-                'end_date' => $endDate->format('Y-m-d'),
-            ],
-            'data' => $data,
-            'total_records' => count($data),
-            'generated_at' => now()->format('Y-m-d H:i:s'),
-        ]);
+        return Excel::download($export, $filename);
     }
 
     /**
@@ -423,7 +417,7 @@ class ReportController extends Controller
             'leads' => $leadsQuery->count(),
             'deals' => $dealsQuery->count(),
             'customers' => $customersQuery->count(),
-            'revenue' => $dealsQuery->where('status', 'approved')->sum('final_amount'),
+            'revenue' => (clone $dealsQuery)->where('status', 'approved')->sum('final_amount'),
         ];
     }
 
@@ -434,5 +428,331 @@ class ReportController extends Controller
         }
 
         return round((($current - $previous) / $previous) * 100, 2);
+    }
+
+    /**
+     * Alias for sales method (for salesReport route)
+     */
+    public function salesReport(Request $request)
+    {
+        return $this->sales($request);
+    }
+
+    /**
+     * Alias for revenueTrends method (for revenueReport route)
+     */
+    public function revenueReport(Request $request)
+    {
+        return $this->revenueTrends($request);
+    }
+
+    /**
+     * Alias for performance method (for performanceReport route)
+     */
+    public function performanceReport(Request $request)
+    {
+        return $this->performance($request);
+    }
+
+    /**
+     * Alias for export method (for exportData route)
+     */
+    public function exportData(Request $request)
+    {
+        return $this->export($request);
+    }
+
+    /**
+     * Get lead conversion analytics
+     */
+    public function leadConversion(Request $request)
+    {
+        $request->validate([
+            'period' => 'sometimes|in:week,month,quarter,year',
+        ]);
+
+        $period = $request->get('period', 'month');
+        $user = $request->user();
+
+        // Define date range based on period
+        switch ($period) {
+            case 'week':
+                $startDate = now()->startOfWeek();
+                $endDate = now()->endOfWeek();
+                break;
+            case 'quarter':
+                $startDate = now()->startOfQuarter();
+                $endDate = now()->endOfQuarter();
+                break;
+            case 'year':
+                $startDate = now()->startOfYear();
+                $endDate = now()->endOfYear();
+                break;
+            default:
+                $startDate = now()->startOfMonth();
+                $endDate = now()->endOfMonth();
+        }
+
+        $leadsQuery = Lead::whereBetween('created_at', [$startDate, $endDate]);
+        if ($user->isSales()) {
+            $leadsQuery->where('sales_id', $user->id);
+        }
+
+        $totalLeads = $leadsQuery->count();
+        $convertedLeads = (clone $leadsQuery)->where('status', 'closed_won')->count();
+        $conversionRate = $totalLeads > 0 ? ($convertedLeads / $totalLeads) * 100 : 0;
+
+        // Conversion funnel by status
+        $funnel = [
+            'new' => (clone $leadsQuery)->where('status', 'new')->count(),
+            'contacted' => (clone $leadsQuery)->where('status', 'contacted')->count(),
+            'qualified' => (clone $leadsQuery)->where('status', 'qualified')->count(),
+            'proposal' => (clone $leadsQuery)->where('status', 'proposal')->count(),
+            'negotiation' => (clone $leadsQuery)->where('status', 'negotiation')->count(),
+            'closed_won' => $convertedLeads,
+            'closed_lost' => (clone $leadsQuery)->where('status', 'closed_lost')->count(),
+        ];
+
+        return response()->json([
+            'period' => $period,
+            'date_range' => [
+                'start' => $startDate->format('Y-m-d'),
+                'end' => $endDate->format('Y-m-d'),
+            ],
+            'total_leads' => $totalLeads,
+            'converted_leads' => $convertedLeads,
+            'conversion_rate' => round($conversionRate, 2),
+            'funnel' => $funnel,
+        ]);
+    }
+
+    /**
+     * Get sales performance by user
+     */
+    public function salesPerformance(Request $request)
+    {
+        $request->validate([
+            'period' => 'sometimes|in:week,month,quarter,year',
+        ]);
+
+        $period = $request->get('period', 'month');
+        $user = $request->user();
+
+        // Only managers can see all sales performance
+        if ($user->isSales()) {
+            return response()->json(['message' => 'Access denied'], 403);
+        }
+
+        // Define date range
+        switch ($period) {
+            case 'week':
+                $startDate = now()->startOfWeek();
+                $endDate = now()->endOfWeek();
+                break;
+            case 'quarter':
+                $startDate = now()->startOfQuarter();
+                $endDate = now()->endOfQuarter();
+                break;
+            case 'year':
+                $startDate = now()->startOfYear();
+                $endDate = now()->endOfYear();
+                break;
+            default:
+                $startDate = now()->startOfMonth();
+                $endDate = now()->endOfMonth();
+        }
+
+        $salesUsers = User::where('role', 'sales')->get();
+        $performance = [];
+
+        foreach ($salesUsers as $sales) {
+            $leadsCount = Lead::where('sales_id', $sales->id)
+                             ->whereBetween('created_at', [$startDate, $endDate])
+                             ->count();
+
+            $dealsCount = Deal::where('sales_id', $sales->id)
+                             ->whereBetween('created_at', [$startDate, $endDate])
+                             ->count();
+
+            $customersCount = Customer::where('sales_id', $sales->id)
+                                     ->whereBetween('created_at', [$startDate, $endDate])
+                                     ->count();
+
+            $revenue = Deal::where('sales_id', $sales->id)
+                          ->where('status', 'closed_won')
+                          ->whereBetween('updated_at', [$startDate, $endDate])
+                          ->sum('final_amount');
+
+            $performance[] = [
+                'sales_id' => $sales->id,
+                'sales_name' => $sales->name,
+                'leads' => $leadsCount,
+                'deals' => $dealsCount,
+                'customers' => $customersCount,
+                'revenue' => $revenue,
+                'conversion_rate' => $leadsCount > 0 ? ($customersCount / $leadsCount) * 100 : 0,
+            ];
+        }
+
+        // Sort by revenue descending
+        usort($performance, function ($a, $b) {
+            return $b['revenue'] <=> $a['revenue'];
+        });
+
+        return response()->json([
+            'period' => $period,
+            'date_range' => [
+                'start' => $startDate->format('Y-m-d'),
+                'end' => $endDate->format('Y-m-d'),
+            ],
+            'performance' => $performance,
+        ]);
+    }
+
+    /**
+     * Get product performance
+     */
+    public function productPerformance(Request $request)
+    {
+        $request->validate([
+            'period' => 'sometimes|in:week,month,quarter,year',
+        ]);
+
+        $period = $request->get('period', 'month');
+        $user = $request->user();
+
+        // Define date range
+        switch ($period) {
+            case 'week':
+                $startDate = now()->startOfWeek();
+                $endDate = now()->endOfWeek();
+                break;
+            case 'quarter':
+                $startDate = now()->startOfQuarter();
+                $endDate = now()->endOfQuarter();
+                break;
+            case 'year':
+                $startDate = now()->startOfYear();
+                $endDate = now()->endOfYear();
+                break;
+            default:
+                $startDate = now()->startOfMonth();
+                $endDate = now()->endOfMonth();
+        }
+
+        // Get products and their performance
+        $products = \App\Models\Product::with([
+            'dealItems' => function ($query) use ($startDate, $endDate, $user) {
+                $query->whereHas('deal', function ($q) use ($startDate, $endDate, $user) {
+                    $q->whereBetween('created_at', [$startDate, $endDate])
+                      ->where('status', 'closed_won');
+
+                    if ($user->isSales()) {
+                        $q->where('sales_id', $user->id);
+                    }
+                });
+            }
+        ])->get();
+
+        $performance = $products->map(function ($product) {
+            $totalQuantity = $product->dealItems->sum('quantity');
+            $totalRevenue = $product->dealItems->sum('subtotal');
+            $dealsCount = $product->dealItems->count();
+
+            return [
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'category' => $product->category,
+                'selling_price' => $product->selling_price,
+                'quantity_sold' => $totalQuantity,
+                'deals_count' => $dealsCount,
+                'total_revenue' => $totalRevenue,
+                'average_price' => $dealsCount > 0 ? $totalRevenue / $dealsCount : 0,
+            ];
+        })->sortByDesc('total_revenue')->values();
+
+        return response()->json([
+            'period' => $period,
+            'date_range' => [
+                'start' => $startDate->format('Y-m-d'),
+                'end' => $endDate->format('Y-m-d'),
+            ],
+            'products' => $performance,
+        ]);
+    }
+
+    /**
+     * Get all generated reports (placeholder)
+     */
+    public function getAllReports(Request $request)
+    {
+        // This is a placeholder for stored reports functionality
+        // In a real implementation, you might store generated reports in a database
+
+        $user = $request->user();
+
+        // Mock data for demonstration
+        $reports = [
+            [
+                'id' => 1,
+                'type' => 'sales',
+                'name' => 'Sales Report - ' . now()->format('M Y'),
+                'generated_by' => $user->name,
+                'generated_at' => now()->subDays(2)->format('Y-m-d H:i:s'),
+                'period' => [
+                    'start' => now()->startOfMonth()->format('Y-m-d'),
+                    'end' => now()->endOfMonth()->format('Y-m-d'),
+                ],
+                'status' => 'completed',
+            ],
+            [
+                'id' => 2,
+                'type' => 'revenue',
+                'name' => 'Revenue Report - ' . now()->format('M Y'),
+                'generated_by' => $user->name,
+                'generated_at' => now()->subDays(5)->format('Y-m-d H:i:s'),
+                'period' => [
+                    'start' => now()->subMonth()->startOfMonth()->format('Y-m-d'),
+                    'end' => now()->subMonth()->endOfMonth()->format('Y-m-d'),
+                ],
+                'status' => 'completed',
+            ],
+        ];
+
+        if ($user->isSales()) {
+            // Filter reports for sales users (only their own)
+            $reports = array_filter($reports, function ($report) use ($user) {
+                return $report['generated_by'] === $user->name;
+            });
+        }
+
+        return response()->json(array_values($reports));
+    }
+
+    /**
+     * Delete report (placeholder)
+     */
+    public function deleteReport(Request $request, $id)
+    {
+        // This is a placeholder for deleting stored reports
+        // In a real implementation, you would delete from database
+
+        return response()->json(['message' => 'Report deleted successfully']);
+    }
+
+    /**
+     * Download report (placeholder)
+     */
+    public function downloadReport(Request $request, $type, $id)
+    {
+        // This is a placeholder for downloading reports
+        // In a real implementation, you would retrieve the file and return it
+
+        return response()->json([
+            'message' => 'Report download initiated',
+            'type' => $type,
+            'id' => $id,
+            'download_url' => "/reports/{$type}/{$id}/download",
+        ]);
     }
 }

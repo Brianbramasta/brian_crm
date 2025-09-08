@@ -54,10 +54,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Reports and Dashboard
     Route::get('/dashboard', [ReportController::class, 'dashboard']);
+    Route::get('/reports/dashboard-stats', [ReportController::class, 'dashboard']);
     Route::get('/reports/sales', [ReportController::class, 'salesReport']);
     Route::get('/reports/revenue', [ReportController::class, 'revenueReport']);
     Route::get('/reports/performance', [ReportController::class, 'performanceReport']);
-    Route::post('/reports/export', [ReportController::class, 'exportData']);
+    Route::get('/reports/lead-conversion', [ReportController::class, 'leadConversion']);
+    Route::get('/reports/sales-performance', [ReportController::class, 'salesPerformance']);
+    Route::get('/reports/product-performance', [ReportController::class, 'productPerformance']);
+    Route::get('/reports/export', [ReportController::class, 'export']);
+    Route::get('/reports', [ReportController::class, 'getAllReports']);
+    Route::delete('/reports/{id}', [ReportController::class, 'deleteReport']);
+    Route::get('/reports/{type}/{id}/download', [ReportController::class, 'downloadReport']);
 
     // Task Management (keeping existing functionality)
     Route::apiResource('tasks', TaskController::class);

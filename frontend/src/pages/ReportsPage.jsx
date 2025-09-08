@@ -71,9 +71,12 @@ const ReportsPage = () => {
     })
   }
 
-  const handleExportReport = async (reportType, reportId) => {
+  const handleExportReport = async (reportType) => {
     try {
-      const result = await reportService.downloadReport(reportType, reportId)
+      const result = await reportService.exportToExcel(reportType, {
+        startDate: dateRange.start,
+        endDate: dateRange.end
+      })
       if (result.success) {
         // Download handled by the service
         setError('')
@@ -347,6 +350,60 @@ const ReportsPage = () => {
       </div>
       )}
 
+      {/* Direct Excel Export */}
+      <div className="bg-white shadow rounded-lg p-6 mb-8">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          <Download className="inline h-5 w-5 mr-2 text-green-600" />
+          Export to Excel
+        </h3>
+        <p className="text-sm text-gray-600 mb-4">Download reports directly as Excel files for the selected date range.</p>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <button
+            onClick={() => handleExportReport('leads')}
+            className="flex items-center justify-center p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <div className="text-center">
+              <Users className="mx-auto h-6 w-6 text-blue-600 mb-2" />
+              <span className="block text-sm font-medium text-blue-900">Leads Report</span>
+              <span className="block text-xs text-blue-600">Excel Export</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleExportReport('deals')}
+            className="flex items-center justify-center p-4 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            <div className="text-center">
+              <TrendingUp className="mx-auto h-6 w-6 text-green-600 mb-2" />
+              <span className="block text-sm font-medium text-green-900">Deals Report</span>
+              <span className="block text-xs text-green-600">Excel Export</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleExportReport('customers')}
+            className="flex items-center justify-center p-4 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <div className="text-center">
+              <Users className="mx-auto h-6 w-6 text-purple-600 mb-2" />
+              <span className="block text-sm font-medium text-purple-900">Customers Report</span>
+              <span className="block text-xs text-purple-600">Excel Export</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleExportReport('sales')}
+            className="flex items-center justify-center p-4 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+          >
+            <div className="text-center">
+              <BarChart3 className="mx-auto h-6 w-6 text-orange-600 mb-2" />
+              <span className="block text-sm font-medium text-orange-900">Sales Report</span>
+              <span className="block text-xs text-orange-600">Excel Export</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
       {/* Generated Reports List */}
       {loading ? (
         <div className="text-center py-12">
@@ -405,7 +462,7 @@ const ReportsPage = () => {
 
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => handleExportReport(report.type, report.id)}
+                        onClick={() => handleExportReport(report.type)}
                         className="flex items-center px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-100 rounded-md hover:bg-indigo-200 transition duration-200"
                       >
                         <Download className="h-4 w-4 mr-1" />
