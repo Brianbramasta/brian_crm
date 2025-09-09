@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\Deal;
 use App\Models\Lead;
 use App\Models\Product;
+use App\Models\Customer;
+use App\Models\CustomerService;
 
 class DealController extends Controller
 {
@@ -213,8 +215,46 @@ class DealController extends Controller
         if ($request->status === 'closed_won') {
             $deal->lead->update(['status' => 'closed_won']);
 
-            // TODO: Create customer and customer services
-            // This would be implemented based on business requirements
+            // Create customer automatically from lead and deal
+            $customer = Customer::create([
+                'lead_id' => $deal->lead_id,
+                'name' => $deal->lead->name,
+                'email' => $deal->lead->email,
+                'phone' => $deal->lead->phone,
+                'address' => $deal->lead->address,
+                'billing_address' => $deal->lead->address,
+                'installation_address' => $deal->lead->address,
+                'customer_type' => 'individual', // Default, could be determined by business logic
+                'status' => 'active',
+                'sales_id' => $deal->sales_id,
+                'activation_date' => now(),
+                'notes' => 'Customer created automatically from deal: ' . $deal->title,
+            ]);
+
+            // Create customer services from deal items
+            foreach ($deal->items as $dealItem) {
+                CustomerService::create([
+                    'customer_id' => $customer->id,
+                    'product_id' => $dealItem->product_id,
+                    'deal_id' => $deal->id,
+                    'monthly_fee' => $dealItem->negotiated_price,
+                    'installation_fee' => $this->calculateInstallationFee($dealItem->product),
+                    'start_date' => now(),
+                    'billing_cycle' => 'monthly',
+                    'status' => 'active',
+                    'installation_address' => $customer->address,
+                    'equipment_info' => $this->generateEquipmentInfo($dealItem->product),
+                    'notes' => 'Service created from deal item: ' . $dealItem->product->name,
+                ]);
+            }
+
+            // Log the customer creation for audit
+            \Log::info('Customer created automatically from deal', [
+                'deal_id' => $deal->id,
+                'customer_id' => $customer->id,
+                'lead_id' => $deal->lead_id,
+                'sales_id' => $deal->sales_id
+            ]);
         } else {
             $deal->lead->update(['status' => 'closed_lost']);
         }
@@ -263,5 +303,49 @@ class DealController extends Controller
         ];
 
         return response()->json($stats);
+    }
+
+    /**
+     * Calculate installation fee based on product category
+     */
+    private function calculateInstallationFee($product)
+    {
+        // Default installation fees based on product type
+        if (stripos($product->name, 'corporate') !== false || stripos($product->name, 'enterprise') !== false) {
+            return 500000; // Corporate installation fee
+        } elseif (stripos($product->name, 'rumahan') !== false || stripos($product->name, 'home') !== false) {
+            return 200000; // Home installation fee
+        } else {
+            return 300000; // Default installation fee
+        }
+    }
+
+    /**
+     * Generate equipment information based on product
+     */
+    private function generateEquipmentInfo($product)
+    {
+        $isCorporate = stripos($product->name, 'corporate') !== false || stripos($product->name, 'enterprise') !== false;
+
+        return [
+            'router' => $isCorporate ? 'Enterprise Router ER-X' : 'Home Router HR-5',
+            'modem' => 'Fiber Modem FM-1000',
+            'installation_date' => now()->format('Y-m-d'),
+            'technician' => 'Tech Team ' . rand(1, 5),
+            'signal_strength' => rand(85, 100) . '%',
+            'bandwidth_allocated' => $this->extractBandwidthFromProductName($product->name),
+        ];
+    }
+
+    /**
+     * Extract bandwidth information from product name
+     */
+    private function extractBandwidthFromProductName($productName)
+    {
+        // Try to extract bandwidth (e.g., "50Mbps", "100Mbps", "1Gbps")
+        if (preg_match('/(\d+)(Mbps|Gbps)/i', $productName, $matches)) {
+            return $matches[1] . $matches[2];
+        }
+        return 'Standard';
     }
 }

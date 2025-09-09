@@ -137,6 +137,27 @@ class LeadController extends Controller
     }
 
     /**
+     * Update lead status
+     */
+    public function updateStatus(Request $request, Lead $lead)
+    {
+        // Check access permission
+        if ($request->user()->isSales() && $lead->sales_id !== $request->user()->id) {
+            return response()->json(['message' => 'Access denied'], 403);
+        }
+
+        $request->validate([
+            'status' => 'required|in:new,contacted,qualified,proposal,negotiation,closed_won,closed_lost'
+        ]);
+
+        $lead->update([
+            'status' => $request->status
+        ]);
+
+        return response()->json($lead->load('sales'));
+    }
+
+    /**
      * Get lead statistics
      */
     public function stats(Request $request)

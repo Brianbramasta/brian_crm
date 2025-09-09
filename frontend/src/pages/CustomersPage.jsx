@@ -266,13 +266,13 @@ const CustomersPage = () => {
                     {user?.role === 'manager' ? 'All customers' : 'Your assigned customers'}
                   </p>
                 </div>
-                <button
+                {/* <button
                   onClick={openCreateCustomerModal}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Customer
-                </button>
+                </button> */}
               </div>
             </div>
 

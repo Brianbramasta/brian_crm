@@ -34,6 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // CRM - Leads Management
     Route::apiResource('leads', LeadController::class);
+    Route::patch('/leads/{lead}/status', [LeadController::class, 'updateStatus']);
     Route::get('/leads-stats', [LeadController::class, 'stats']);
 
     // CRM - Deals Management

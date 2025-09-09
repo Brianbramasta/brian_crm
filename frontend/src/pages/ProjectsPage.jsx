@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Briefcase, Plus, Edit2, Trash2, Check, X, Clock, DollarSign, User, Calendar, Save, ShoppingCart } from 'lucide-react'
+import { Briefcase, Plus, Edit2, Trash2, Check, X, Clock, DollarSign, User, Calendar, Save, ShoppingCart, Trophy, XCircle } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorMessage from '../components/ErrorMessage'
 import { dealService } from '../services/dealService'
@@ -104,6 +104,10 @@ const ProjectsPage = () => {
         return 'bg-green-100 text-green-800'
       case 'rejected':
         return 'bg-red-100 text-red-800'
+      case 'closed_won':
+        return 'bg-emerald-100 text-emerald-800'
+      case 'closed_lost':
+        return 'bg-gray-100 text-gray-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -117,6 +121,10 @@ const ProjectsPage = () => {
         return <Check className="h-4 w-4" />
       case 'rejected':
         return <X className="h-4 w-4" />
+      case 'closed_won':
+        return <Trophy className="h-4 w-4" />
+      case 'closed_lost':
+        return <XCircle className="h-4 w-4" />
       default:
         return <Clock className="h-4 w-4" />
     }
@@ -246,6 +254,47 @@ const ProjectsPage = () => {
     }
   }
 
+  const handleCloseWon = async (dealId) => {
+    if (!window.confirm('Are you sure you want to close this deal as WON? This will automatically create a customer.')) return
+
+    try {
+      const result = await dealService.closeDeal(dealId, {
+        status: 'closed_won',
+        notes: 'Deal closed as won - customer created automatically'
+      })
+      if (result.success) {
+        await loadDeals()
+        setError('')
+        // Show success message
+        alert('Deal closed successfully! Customer has been created automatically.')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to close deal as won. Please try again.')
+    }
+  }
+
+  const handleCloseLost = async (dealId) => {
+    const reason = prompt('Please provide a reason for closing as lost:')
+    if (!reason) return
+
+    try {
+      const result = await dealService.closeDeal(dealId, {
+        status: 'closed_lost',
+        notes: `Deal closed as lost - Reason: ${reason}`
+      })
+      if (result.success) {
+        await loadDeals()
+        setError('')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to close deal as lost. Please try again.')
+    }
+  }
+
   const addDealItem = () => {
     setDealItems([...dealItems, {
       product_id: '',
@@ -292,6 +341,8 @@ const ProjectsPage = () => {
     waiting_approval: deals.filter(d => d.status === 'waiting_approval').length,
     approved: deals.filter(d => d.status === 'approved').length,
     rejected: deals.filter(d => d.status === 'rejected').length,
+    closed_won: deals.filter(d => d.status === 'closed_won').length,
+    closed_lost: deals.filter(d => d.status === 'closed_lost').length,
   }
 
   return (
@@ -321,6 +372,8 @@ const ProjectsPage = () => {
                 { key: 'waiting_approval', label: 'Waiting Approval', count: statusCounts.waiting_approval },
                 { key: 'approved', label: 'Approved', count: statusCounts.approved },
                 { key: 'rejected', label: 'Rejected', count: statusCounts.rejected },
+                { key: 'closed_won', label: 'Closed Won', count: statusCounts.closed_won },
+                { key: 'closed_lost', label: 'Closed Lost', count: statusCounts.closed_lost },
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -442,6 +495,24 @@ const ProjectsPage = () => {
                               title="Reject Deal"
                             >
                               <X className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
+                        {deal.status === 'approved' && (
+                          <>
+                            <button
+                              onClick={() => handleCloseWon(deal.id)}
+                              className="text-emerald-600 hover:text-emerald-900 p-2 hover:bg-emerald-50 rounded-md transition duration-200"
+                              title="Close as Won (Creates Customer)"
+                            >
+                              <Trophy className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleCloseLost(deal.id)}
+                              className="text-gray-600 hover:text-gray-900 p-2 hover:bg-gray-50 rounded-md transition duration-200"
+                              title="Close as Lost"
+                            >
+                              <XCircle className="h-4 w-4" />
                             </button>
                           </>
                         )}
