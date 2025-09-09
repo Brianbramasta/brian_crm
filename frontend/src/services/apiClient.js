@@ -2,8 +2,8 @@ import axios from 'axios'
 
 // Create axios instance with default configuration
 export const apiClient = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api',
-//   baseURL: 'https://test-crm.brianaldybramasta.my.id/api',
+//   baseURL: 'http://127.0.0.1:8000/api',
+  baseURL: 'https://test-crm.brianaldybramasta.my.id/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
